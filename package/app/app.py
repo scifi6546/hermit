@@ -6,9 +6,18 @@ from pyramid.view import view_defaults
 
 from pyramid.response import Response
 from pyramid.response import FileResponse
+
+
+from pyramid.session import SignedCookieSessionFactory
+
+from pyramid.authentication import AuthTktAuthenticationPolicy
+from pyramid.authorization import ACLAuthorizationPolicy
 import os
 VIDEOS_DIR="../../videos/"
 
+from users import(
+        groupfinder,
+    )
 class Video:
     def __init__(self,url,name,path):
         self.url=url
@@ -55,11 +64,20 @@ vidArr=VideoArr()
 if __name__=='__main__':
     vidArr = VideoArr()
     print(vidArr)
-    with Configurator() as config:
+    my_session_factory = SignedCookieSessionFactory('secret')
+    with Configurator(session_factory=my_session_factory) as config:
+        
+        auth_pol=AuthTktAuthenticationPolicy('secret',callback=groupfinder,hashalg='sha512')
+        authz_pol = ACLAuthorizationPolicy()
+        config.set_authentication_policy(auth_pol)
+        config.set_authorization_policy(authz_pol)
+
         config.include('pyramid_jinja2')
         config.add_route('videos','videos/{url}')
 
         config.add_route('index','/')
+        config.add_route('login','login')
+        config.add_route("logout","logout")
         config.add_static_view(name='static',path='../../static')
 
         config.add_view(video,route_name='videos')

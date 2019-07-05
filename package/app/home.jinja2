@@ -1,0 +1,10 @@
+<head>
+	 <link href="/static/index.css" rel="stylesheet">
+</head>
+<div class="top_nav">
+<a href="{{LOGOUT_URL}}">Log Out</a>
+{% for vid in videos %}
+<video controls class="video">
+   <source src="videos/{{ vid.url}}">
+</video>
+{% endfor %}
