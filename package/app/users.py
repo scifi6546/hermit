@@ -23,5 +23,10 @@ class Users:
                 return
         self.users.append({"username":username,
             "passwd": hash_password(password)})
+    def isPriviliged(self,username):
+        for user in self.users:
+            if(user["username"]==username):
+                return True
+        return False
     def getConfig(self):
         return self.users

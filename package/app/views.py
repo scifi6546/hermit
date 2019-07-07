@@ -34,8 +34,17 @@ class StateMgr:
         self.Config.write(temp_cfg)
     def checkPasswd(self,username,password):
         return self.users.checkPassword(username,password)
-    def getVideos(self):
-        return self.Videos.getVideos()
+    def getVideos(self,username):
+        if(self.isPriviliged(username)):
+            return self.Videos.getVideos()
+        else:
+            return []
+    def isPriviliged(self,username):
+        return self.users.isPriviliged(username)
+    def getVideoByURL(self,username,url):
+        if(self.isPriviliged(username)):
+            return self.Videos.getVideoByURL(url)
+        return
 state=StateMgr()
 class MainView:
     def __init__(self,request):
@@ -53,14 +62,16 @@ class MainView:
         return counter
     @view_config(route_name='index',renderer='home.jinja2')
     def index(self):
+        print(self.logged_in)
         if(self.isSetup()==False):
             print("redirecting to config screen")
             return HTTPFound(self.request.route_url("setup"))
         if self.logged_in is None:
+            
             return HTTPFound(self.request.route_url("login"))
 
         videoArr_temp=[]
-        for i in state.getVideos():
+        for i in state.getVideos(self.logged_in):
             videoArr_temp.append({"url":i.getUrl()});
         print(self.request.route_url("logout"))
         return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp}
@@ -110,6 +121,6 @@ class MainView:
         print("handled video")
         url = self.request.matchdict['url']
         print(url)
-        temp_vid = state.Videos.getVideoByURL(url)
+        temp_vid = state.getVideoByURL(self.logged_in,url)
         print(temp_vid)
         return FileResponse(temp_vid.getFilePath())
