@@ -1,7 +1,6 @@
 from pyramid.view import view_config
 from pyramid.view import view_defaults
-from app import VideoArr
-from app import vidArr
+#from global_data import (VIDEOS,CONFIG,USERS)
 
 from pyramid.response import Response
 from pyramid.response import FileResponse
@@ -9,9 +8,35 @@ from pyramid.response import FileResponse
 from pyramid.security import (remember,forget)
 
 from pyramid.httpexceptions import HTTPFound
-from users import (check_password)
-
+from videos import VideoArr
+from config import Config
+from users import Users
 @view_defaults(renderer='home.jinja2')
+class StateMgr:
+    def __init__(self):
+        self.Config=Config()
+        if(self.Config.getConfig()!={}):
+            self.Videos=VideoArr(self.Config.getConfig()['video_path'])
+            self.isSetup=True
+            self.users=Users(self.Config.getConfig()['users'])
+        else:
+            self.Videos=VideoArr(None)
+            self.isSetup=False
+            self.users=Users([])
+    def write(self,to_write):
+        self.Config.write(to_write)
+        self.Videos.setVideoPath(to_write['video_path'])
+        self.isSetup=True
+    def addUser(self,username,password):
+        self.users.addUser(username,password)
+        temp_cfg=self.Config.getConfig()
+        temp_cfg['users']=self.users.getConfig()
+        self.Config.write(temp_cfg)
+    def checkPasswd(self,username,password):
+        return self.users.checkPassword(username,password)
+    def getVideos(self):
+        return self.Videos.getVideos()
+state=StateMgr()
 class MainView:
     def __init__(self,request):
         self.request=request
@@ -28,11 +53,14 @@ class MainView:
         return counter
     @view_config(route_name='index',renderer='home.jinja2')
     def index(self):
+        if(self.isSetup()==False):
+            print("redirecting to config screen")
+            return HTTPFound(self.request.route_url("setup"))
         if self.logged_in is None:
             return HTTPFound(self.request.route_url("login"))
 
         videoArr_temp=[]
-        for i in vidArr.getVideos():
+        for i in state.getVideos():
             videoArr_temp.append({"url":i.getUrl()});
         print(self.request.route_url("logout"))
         return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp}
@@ -50,7 +78,7 @@ class MainView:
         if 'form.submitted' in request.params:
             username = request.params['username']
             password = request.params['password']
-            if(check_password(username,password)):
+            if(state.checkPasswd(username,password)):
                 print("Password Sucessfull")
                 headers=remember(request,username)
                 return HTTPFound(location=came_from,headers=headers)
@@ -62,3 +90,26 @@ class MainView:
         headers=forget(request)
         url=request.route_url('index')
         return HTTPFound(location=url,headers=headers)
+    @view_config(route_name='setup',renderer="setup.jinja2")
+    def setup(self):
+        if(self.isSetup()==True):
+            return HTTPFound(location=self.request.route_url("index"))
+        else:
+            if 'form.submitted' in self.request.params:
+                temp_config={"video_path":self.request.params["video_path"],
+                    "users":[]}
+                state.write(temp_config)
+                state.addUser(self.request.params["username"],
+                        self.request.params["password"])
+                return HTTPFound(location=self.request.route_url("index"))
+            return {}
+    def isSetup(self):
+        return state.isSetup
+    @view_config(route_name="video") 
+    def video(self):
+        print("handled video")
+        url = self.request.matchdict['url']
+        print(url)
+        temp_vid = state.Videos.getVideoByURL(url)
+        print(temp_vid)
+        return FileResponse(temp_vid.getFilePath())
