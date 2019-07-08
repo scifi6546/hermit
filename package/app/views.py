@@ -99,9 +99,11 @@ class MainView:
 
         videoArr_temp=[]
         for i in state.getVideos(self.logged_in):
-            videoArr_temp.append({"url":i.getUrl()});
+            videoArr_temp.append({"url":i.getUrl(),
+                "html_url":self.request.route_url("video_html",url=i.getUrl())});
+
         print(self.request.route_url("logout"))
-        return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp,"CONFIG_URL":self.request.route_url("config")}
+        return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp,"CONFIG_URL":self.request.route_url("config"),}
     @view_config(route_name='login',renderer='login.jinja2')
     def login(self):
         request=self.request
@@ -151,6 +153,15 @@ class MainView:
         temp_vid = state.getVideoByURL(self.logged_in,url)
         print(temp_vid)
         return FileResponse(temp_vid.getFilePath())
+    @view_config(route_name="video_html",renderer='video.jinja2')
+    def video_html(self):
+        url_t = self.request.matchdict['url']
+        temp_url=self.request.route_url("video",url=url_t)
+        print("temp_url: ")
+        print(temp_url)
+        if(state.isPriviliged(self.logged_in)):
+            return {"video":{"url":temp_url}}
+        return {}
     @view_config(route_name="config",renderer="config.jinja2")
     def configMenue(self):
         print("printed config")

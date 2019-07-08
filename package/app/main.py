@@ -32,6 +32,7 @@ if __name__=='__main__':
         config.add_route("config","config")
         config.add_route("setup","setup")
         config.add_route("user_api","user_api")
+        config.add_route('video_html','video_html/{url}')
         config.add_static_view(name='static',path='../../static')
 
         #config.add_view(index,route_name='index')
