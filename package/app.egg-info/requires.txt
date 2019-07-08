@@ -1,2 +1,3 @@
 bcrypt
 pyramid
+pyramid_jinja2

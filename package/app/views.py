@@ -36,6 +36,16 @@ class StateMgr:
     def addUserAuth(self,user_adding,username,password):
         if self.isPriviliged(user_adding):
             return self.addUser(username,password)
+    def rmUserAuth(self,user_adding,username):
+        if self.isPriviliged(user_adding) and len(self.users.users)>1 and user_adding!=username:
+            print("removed user")
+            self.users.rmUser(username)
+        else:
+            print("did not remove user")
+        temp_cfg=self.Config.getConfig()
+        temp_cfg["users"]=self.users.getConfig()
+        self.Config.write(temp_cfg)
+
     def checkPasswd(self,username,password):
         return self.users.checkPassword(username,password)
     def getVideos(self,username):
@@ -44,8 +54,13 @@ class StateMgr:
         else:
             return []
     def getUserInfo(self,username):
+        print("priviliged?")
         if self.isPriviliged(username):
+            print("user_info: ")
+            print(self.users.getUserInfo())
             return self.users.getUserInfo()
+        else:
+            print("user " + username +"not priviliged")
     def isPriviliged(self,username):
         return self.users.isPriviliged(username)
     def getVideoByURL(self,username,url):
@@ -138,12 +153,18 @@ class MainView:
         return FileResponse(temp_vid.getFilePath())
     @view_config(route_name="config",renderer="config.jinja2")
     def configMenue(self):
+        print("printed config")
+        print(state.getUserInfo(self.logged_in))
         return {"users":state.getUserInfo(self.logged_in)}
-    @view_config(route_name="adduser",renderer="json")
+    @view_config(route_name="user_api",renderer="json")
     def adduserAPI(self):
         print(self.request.body)
         data=json.loads(self.request.body.decode('utf8'))
-        username=data["username"]
-        password=data["password"]
-        state.addUserAuth(self.logged_in,username,password)
-        
+        if(data["action"]=="add user"):
+            username=data["username"]
+            password=data["password"]
+            state.addUserAuth(self.logged_in,username,password)
+        if(data["action"]=="remove user"):
+            username=data["username"]
+            print("removed users")
+            state.rmUserAuth(self.logged_in,username)

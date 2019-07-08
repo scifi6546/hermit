@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <div class = "config">
-	<div class="user config">
+	<div class="user_config">
 	{% for user in users %}
 		<div class="user_specific">
 			{{user.username}}
-			<button class="user_button" id="button.{{user.username}}">Edit User </button>
+			<button class="user_button" id="button.{{user.username}}">Remove User </button>
 		</div>
 
 	{% endfor %}
@@ -34,8 +34,23 @@
 	//		console.log(document.getElementById('add_user_username'))
 			let username = document.getElementById('add_user_username').value
 			let password = document.getElementById('add_user_password').value
-			console.log(postData("addUser",{"username":username,"password":password}));
+			console.log(postData("user_api",{"action":"add user","username":username,"password":password}));
 			console.log("user: "+username+" password: " + password);
+			location.reload()
 
 		}
+		console.log(document.getElementsByClassName("user_config")[0])
+		let user_config = document.getElementsByClassName("user_config")[0]
+		let remove_user_buttons=[]
+		for(let i=0;i<user_config.children.length;i++){
+			remove_user_buttons.push(user_config.children[i].children[0]);
+			remove_user_buttons[i].onclick=function temp(){
+				console.log(this);
+				username=this.id.substring(7)
+				console.log(username);
+				postData("user_api",{"action":"remove user","username":username})
+				//location.reload()
+			};
+		}
+		console.log(remove_user_buttons);
 	</script>

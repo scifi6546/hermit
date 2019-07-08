@@ -23,6 +23,13 @@ class Users:
                 return
         self.users.append({"username":username,
             "passwd": hash_password(password)})
+    def rmUser(self,username):
+        for i in range(0,len(self.users)):
+            if self.users[i]["username"]==username:
+                self.users.pop(i)
+                print("removed user")
+                return
+
     def isPriviliged(self,username):
         for user in self.users:
             if(user["username"]==username):
@@ -36,4 +43,5 @@ class Users:
         temp_out = []
         for user in self.users:
             temp_out.append({"username":user["username"]})
+
         return temp_out
