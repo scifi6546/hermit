@@ -30,3 +30,10 @@ class Users:
         return False
     def getConfig(self):
         return self.users
+    #returns
+    #[{"username":"foo"}]
+    def getUserInfo(self):
+        temp_out = []
+        for user in self.users:
+            temp_out.append({"username":user["username"]})
+        return temp_out

@@ -11,6 +11,7 @@ from pyramid.httpexceptions import HTTPFound
 from videos import VideoArr
 from config import Config
 from users import Users
+import json
 @view_defaults(renderer='home.jinja2')
 class StateMgr:
     def __init__(self):
@@ -32,6 +33,9 @@ class StateMgr:
         temp_cfg=self.Config.getConfig()
         temp_cfg['users']=self.users.getConfig()
         self.Config.write(temp_cfg)
+    def addUserAuth(self,user_adding,username,password):
+        if self.isPriviliged(user_adding):
+            return self.addUser(username,password)
     def checkPasswd(self,username,password):
         return self.users.checkPassword(username,password)
     def getVideos(self,username):
@@ -39,12 +43,20 @@ class StateMgr:
             return self.Videos.getVideos()
         else:
             return []
+    def getUserInfo(self,username):
+        if self.isPriviliged(username):
+            return self.users.getUserInfo()
     def isPriviliged(self,username):
         return self.users.isPriviliged(username)
     def getVideoByURL(self,username,url):
         if(self.isPriviliged(username)):
             return self.Videos.getVideoByURL(url)
         return
+    #gets configuration menue in dictionary form
+    #[{"name":"NAME OF field","description":"description","items":['values','value2']}]
+    def getConfigMenu(self):
+        
+        return [{"name":"users"}]
 state=StateMgr()
 class MainView:
     def __init__(self,request):
@@ -74,7 +86,7 @@ class MainView:
         for i in state.getVideos(self.logged_in):
             videoArr_temp.append({"url":i.getUrl()});
         print(self.request.route_url("logout"))
-        return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp}
+        return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp,"CONFIG_URL":self.request.route_url("config")}
     @view_config(route_name='login',renderer='login.jinja2')
     def login(self):
         request=self.request
@@ -124,3 +136,14 @@ class MainView:
         temp_vid = state.getVideoByURL(self.logged_in,url)
         print(temp_vid)
         return FileResponse(temp_vid.getFilePath())
+    @view_config(route_name="config",renderer="config.jinja2")
+    def configMenue(self):
+        return {"users":state.getUserInfo(self.logged_in)}
+    @view_config(route_name="adduser",renderer="json")
+    def adduserAPI(self):
+        print(self.request.body)
+        data=json.loads(self.request.body.decode('utf8'))
+        username=data["username"]
+        password=data["password"]
+        state.addUserAuth(self.logged_in,username,password)
+        
