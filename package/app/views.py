@@ -1,6 +1,5 @@
 from pyramid.view import view_config
 from pyramid.view import view_defaults
-#from global_data import (VIDEOS,CONFIG,USERS)
 
 from pyramid.response import Response
 from pyramid.response import FileResponse
@@ -76,6 +75,12 @@ class StateMgr:
     def getConfigMenu(self):
         
         return [{"name":"users"}]
+    def changeVideoPath(self,username,path):
+        if(self.isPriviliged(username)):
+            self.Videos.setVideoPath(path) 
+            temp_cfg=self.Config.getConfig()
+            temp_cfg["video_path"]=path
+            self.Config.write(temp_cfg)
 state=StateMgr()
 class MainView:
     def __init__(self,request):
@@ -183,3 +188,10 @@ class MainView:
             username=data["username"]
             print("removed users")
             state.rmUserAuth(self.logged_in,username)
+    @view_config(route_name="video_path_api",renderer="json")
+    def videoPathAPI(self):
+        data=json.loads(self.request.body.decode('utf8'))
+        if(data["action"]=="change data path"):
+            path=data["path"]
+            state.changeVideoPath(self.logged_in,path)
+        return {} 

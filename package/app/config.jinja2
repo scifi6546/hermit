@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <div class = "config">
+	<div class="video_path">
+		<input type="text" id="change_video_path">Change Video Path</input>
+		<button id="change_video_path_bttn">Submit</button>
+	</div>
 	<div class="user_config">
 	{% for user in users %}
 		<div class="user_specific">
@@ -39,6 +43,12 @@
 			location.reload()
 
 		}
+		document.getElementById("change_video_path_bttn").onclick=function changeVidPath(){
+			let vid_path=document.getElementById('change_video_path').value
+			console.log(vid_path)
+			postData("api/video_path",{"action":"change data path","path":vid_path})
+		}
+
 		console.log(document.getElementsByClassName("user_config")[0])
 		let user_config = document.getElementsByClassName("user_config")[0]
 		let remove_user_buttons=[]
