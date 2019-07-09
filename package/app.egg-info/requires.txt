@@ -1,3 +1,4 @@
 bcrypt
 pyramid
 pyramid_jinja2
+python-magic

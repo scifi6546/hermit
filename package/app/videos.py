@@ -1,4 +1,5 @@
 import os
+import magic
 class Video:
     def __init__(self,url,name,path):
         self.url=url
@@ -21,9 +22,11 @@ class VideoArr:
         self.videoFiles=[]
         for i in temp_vids:
             path=os.path.join(self.videoDir,i)
-            self.videoFiles.append(Video(i,i,path))
+            if(magic.from_file(path,mime=True)[0:5]=='video'):
+                self.videoFiles.append(Video(i,i,path))
     def setVideoPath(self,video_dir):
-        
+        if(os.path.isdir(video_dir)==False):
+            return {"message":"file not found"}
         if(video_dir!=self.videoDir):
             self.videoDir=video_dir
             temp_vids = os.listdir(self.videoDir)
