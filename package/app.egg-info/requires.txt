@@ -1,3 +1,4 @@
 bcrypt
+ffmpeg-python
 pyramid
 pyramid_jinja2

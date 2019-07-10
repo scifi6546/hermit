@@ -16,7 +16,7 @@ class StateMgr:
     def __init__(self):
         self.Config=Config()
         if(self.Config.getConfig()!={}):
-            self.Videos=VideoArr(self.Config.getConfig()['video_path'])
+            self.Videos=VideoArr(self.Config.getConfig()['video_path'],"thumbnails")
             self.isSetup=True
             self.users=Users(self.Config.getConfig()['users'])
         else:
@@ -66,6 +66,11 @@ class StateMgr:
         if(self.isPriviliged(username)):
             return self.Videos.getVideoByURL(url)
         return
+    def getVideoByName(self,username,name):
+        if(self.isPriviliged(username)):
+            return self.Videos.getVideoByName(name)
+        return
+
     #gets configuration menue in dictionary form
     #[{"name":"NAME OF field","description":"description","items":['values','value2']}]
     def getConfigMenu(self):
@@ -105,7 +110,7 @@ class MainView:
         videoArr_temp=[]
         for i in state.getVideos(self.logged_in):
             videoArr_temp.append({"url":i.getUrl(),
-                "html_url":self.request.route_url("video_html",url=i.getUrl())});
+                "html_url":self.request.route_url("video_html",url=i.getUrl()),"thumb_url":self.request.route_url("thumbnails",name=i.getName())});
 
         print(self.request.route_url("logout"))
         return {"LOGOUT_URL":self.request.route_url("logout"),"videos":videoArr_temp,"CONFIG_URL":self.request.route_url("config"),}
@@ -191,3 +196,8 @@ class MainView:
             path=data["path"]
             state.changeVideoPath(self.logged_in,path)
         return {} 
+    @view_config(route_name="thumbnails")
+    def thumbnails(self):
+        vid = state.getVideoByName(self.logged_in,
+                self.request.matchdict['name'])
+        return FileResponse(vid.getThumb())
