@@ -34,6 +34,7 @@ if __name__=='__main__':
         config.add_route("user_api","user_api")
         config.add_route('video_html','video_html/{url}')
         config.add_route("video_path_api","api/video_path")
+        config.add_route("playlist_api","api/playlist")
         config.add_route("thumbnails","thumbnails/{name}")
         config.add_static_view(name='static',path='../../static')
 
