@@ -37,6 +37,7 @@ class VideoArr:
                 if os.path.isdir(path) ==False:
                     if magic.from_file(path,mime=True)[0:5]=='video':
                         self.videoFiles.append(Video(i,i,path,None))
+            self.genThumbnails()
     def genThumbnails(self):
         for i in range(0,len(self.videoFiles)):
             vid = self.videoFiles[i]
