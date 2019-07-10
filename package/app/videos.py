@@ -21,7 +21,6 @@ class VideoArr:
         if video_dir is None:
             self.videoDir=None
             self.videoFiles=[]
-            self.setVideoPath()
             return
         self.videoDir=""
         self.setVideoPath(video_dir)
