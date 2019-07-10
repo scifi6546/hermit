@@ -41,6 +41,7 @@ class StateMgr:
             self.users.rmUser(username)
         else:
             print("did not remove user")
+            return {"status":"failed adding user"}
         temp_cfg=self.Config.getConfig()
         temp_cfg["users"]=self.users.getConfig()
         self.Config.write(temp_cfg)
@@ -60,11 +61,14 @@ class StateMgr:
             return self.users.getUserInfo()
         else:
             print("user " + username +"not priviliged")
+            return {"status":"not priviliged"}
     def isPriviliged(self,username):
         return self.users.isPriviliged(username)
     def getVideoByURL(self,username,url):
         if(self.isPriviliged(username)):
             return self.Videos.getVideoByURL(url)
+        else:
+            return {"status":"not privliged"}
         return
     def getVideoByName(self,username,name):
         if(self.isPriviliged(username)):

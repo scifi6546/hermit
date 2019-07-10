@@ -1,5 +1,6 @@
 import os
 import subprocess
+import magic
 class Video:
     def __init__(self,url,name,path,thumbnail_path):
         self.url=url
@@ -25,14 +26,17 @@ class VideoArr:
         self.setVideoPath(video_dir)
         self.genThumbnails()
     def setVideoPath(self,video_dir):
-        
+        if(os.path.isdir(video_dir)==False):
+            return {"message":"file not found"}
         if(video_dir!=self.videoDir):
             self.videoDir=video_dir
             temp_vids = os.listdir(self.videoDir)
             self.videoFiles=[]
             for i in temp_vids:
                 path=os.path.join(self.videoDir,i)
-                self.videoFiles.append(Video(i,i,path,None))
+                if os.path.isdir(path) ==False:
+                    if magic.from_file(path,mime=True)[0:5]=='video':
+                        self.videoFiles.append(Video(i,i,path,None))
     def genThumbnails(self):
         for i in range(0,len(self.videoFiles)):
             vid = self.videoFiles[i]
