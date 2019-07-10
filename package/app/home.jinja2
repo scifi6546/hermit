@@ -3,14 +3,14 @@
 	 <link href="/static/index.css" rel="stylesheet">
 </head>
 <div class="topnav">
-	<a href="{{LOGOUT_URL}}">Log Out</a>
-	<a href="{{CONFIG_URL}}">Settings</a>
+	<a href="{{LOGOUT_URL}}" class="topnav_link">Log Out</a>
+	<a href="{{CONFIG_URL}}" class="topnav_link">Settings</a>
 </div>
 <div class="body">
 {% for vid in videos %}
 	<div class="video_div">
 		<a href="{{vid.html_url}}">
-			<img src="{{vid.thumb_url}}"/>
+			<img class="video_img" src="{{vid.thumb_url}}"/>
 		</a>
 	</div>
 	{% endfor %}
