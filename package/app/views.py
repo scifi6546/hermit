@@ -20,7 +20,7 @@ class StateMgr:
             self.isSetup=True
             self.users=Users(self.Config.getConfig()['users'])
         else:
-            self.Videos=VideoArr(None)
+            self.Videos=VideoArr(None,"thumbnails")
             self.isSetup=False
             self.users=Users([])
     def write(self,to_write):
