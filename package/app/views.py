@@ -86,6 +86,15 @@ class StateMgr:
             temp_cfg=self.Config.getConfig()
             temp_cfg["video_path"]=path
             self.Config.write(temp_cfg)
+    def makePlaylist(self,username,video_names):
+        if(self.isPriviliged(username)):
+            self.Videos.makePlaylist(video_names)
+            return {"status":"success"}
+        else:
+            return {"status":"not priviliged"}
+    def getPlaylists(self,username):
+        if(self.isPriviliged(username)):
+            return self.Videos.getPlaylists()
 state=StateMgr()
 class MainView:
     def __init__(self,request):
@@ -205,3 +214,8 @@ class MainView:
         vid = state.getVideoByName(self.logged_in,
                 self.request.matchdict['name'])
         return FileResponse(vid.getThumb())
+    
+    @view_config(route_name="playlist_api",renderer="json")
+    def playlistAPI(self):
+        playlists=state.getPlaylists(self.logged_in)
+        return {"playlists":playlists}

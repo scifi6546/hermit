@@ -25,6 +25,7 @@ class VideoArr:
         self.videoDir=""
         self.setVideoPath(video_dir)
         self.genThumbnails()
+        self.playlists=[]
     def setVideoPath(self,video_dir):
         if(os.path.isdir(video_dir)==False):
             return {"message":"file not found"}
@@ -65,4 +66,13 @@ class VideoArr:
     def getVideos(self):
         return self.videoFiles
 
+    def makePlaylist(self,video_names):
+        temp_playlist=[]
+        for name in video_names:
+                temp_vid = self.getVideoByName(name)
+                if(temp_vid!=None):
+                    temp_playlist.append(temp_vid)
+        self.playlists.append(temp_playlist)
+    def getPlaylists(self):
+        return self.playlists
 
