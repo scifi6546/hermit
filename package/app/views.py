@@ -217,5 +217,7 @@ class MainView:
     
     @view_config(route_name="playlist_api",renderer="json")
     def playlistAPI(self):
+        print(self.request)
         playlists=state.getPlaylists(self.logged_in)
+        print("playlists: "+ str(playlists))
         return {"playlists":playlists}
