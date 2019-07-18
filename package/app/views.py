@@ -7,9 +7,9 @@ from pyramid.response import FileResponse
 from pyramid.security import (remember,forget)
 
 from pyramid.httpexceptions import HTTPFound
-from videos import VideoArr
-from config import Config
-from users import Users
+from .videos import VideoArr
+from .config import Config
+from .users import Users
 import json
 @view_defaults(renderer='home.jinja2')
 class StateMgr:

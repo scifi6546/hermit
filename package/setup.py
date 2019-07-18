@@ -6,7 +6,8 @@ requires = [
         'pyramid_jinja2',
         'ffmpeg-python',
         'python-magic',
-        'pyramid_jinja2'
+        'pyramid_jinja2',
+        'gunicorn'
 ]
 setup(name='app',
         install_requires=requires,

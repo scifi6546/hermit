@@ -4,6 +4,7 @@
 </div>
 <head>
 	 <link href="/static/index.css" rel="stylesheet">
+	 <script src="static/jquery.js" type="text/javascript"></script>
 </head>
 <div class = "form_div">
 	<div class="video_path">
@@ -44,7 +45,8 @@
 	//		console.log(document.getElementById('add_user_username'))
 			let username = document.getElementById('add_user_username').value
 			let password = document.getElementById('add_user_password').value
-			console.log(postData("user_api",{"action":"add user","username":username,"password":password}));
+			$.ajax({url:"user_api",type:"post",data:{"action":"add user","username":username,"password":password},dataType:"json"});
+			//console.log(postData("user_api",{"action":"add user","username":username,"password":password}));
 			console.log("user: "+username+" password: " + password);
 			//location.reload()
 
