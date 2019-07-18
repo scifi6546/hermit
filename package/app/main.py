@@ -35,12 +35,14 @@ with Configurator(session_factory=my_session_factory) as config:
     config.add_route("user_api","user_api")
     config.add_route('video_html','video_html/{url}')
     config.add_route("video_path_api","api/video_path")
-    config.add_route("playlist_api","api/playlist")
+    config.add_route("playlist_get","api/playlist_get")
+    config.add_route("playlist_post","api/playlist_post")
     config.add_route("thumbnails","thumbnails/{name}")
     config.add_static_view(name='static',path='../../static')
 
         #config.add_view(index,route_name='index')
 config.scan('.views')
 app=config.make_wsgi_app()
-#server = make_server('0.0.0.0',8080,app)
-#server.serve_forever()
+if __name__=="__main__":
+    server = make_server('0.0.0.0',8080,app)
+    server.serve_forever()

@@ -16,22 +16,26 @@ class StateMgr:
     def __init__(self):
         self.Config=Config()
         if(self.Config.getConfig()!={}):
-            self.Videos=VideoArr(self.Config.getConfig()['video_path'],"thumbnails")
+            self.Videos=VideoArr(self.Config.getConfig()['videos'])
             self.isSetup=True
             self.users=Users(self.Config.getConfig()['users'])
         else:
-            self.Videos=VideoArr(None,"thumbnails")
+            self.Videos=VideoArr(None)
             self.isSetup=False
             self.users=Users([])
-    def write(self,to_write):
+    def _write(self):
+        to_write={}
+        to_write["users"]=self.users.getConfig()
+        to_write["videos"]=self.Videos.getConfig()
         self.Config.write(to_write)
-        self.Videos.setVideoPath(to_write['video_path'])
         self.isSetup=True
+    def configure(self,username,password,video_dir):
+        self.addUser(username,password)
+        self.Videos.setVideoPath(video_dir)
+        self._write()
     def addUser(self,username,password):
         self.users.addUser(username,password)
-        temp_cfg=self.Config.getConfig()
-        temp_cfg['users']=self.users.getConfig()
-        self.Config.write(temp_cfg)
+        self._write()
     def addUserAuth(self,user_adding,username,password):
         if self.isPriviliged(user_adding):
             return self.addUser(username,password)
@@ -42,9 +46,7 @@ class StateMgr:
         else:
             print("did not remove user")
             return {"status":"failed adding user"}
-        temp_cfg=self.Config.getConfig()
-        temp_cfg["users"]=self.users.getConfig()
-        self.Config.write(temp_cfg)
+        self._write()
 
     def checkPasswd(self,username,password):
         return self.users.checkPassword(username,password)
@@ -86,15 +88,21 @@ class StateMgr:
             temp_cfg=self.Config.getConfig()
             temp_cfg["video_path"]=path
             self.Config.write(temp_cfg)
-    def makePlaylist(self,username,video_names):
+    def makePlaylist(self,username,video_names,playlist_name):
         if(self.isPriviliged(username)):
-            self.Videos.makePlaylist(video_names)
+            self.Videos.makePlaylist(video_names,playlist_name)
+            self._write()
             return {"status":"success"}
         else:
             return {"status":"not priviliged"}
     def getPlaylists(self,username):
         if(self.isPriviliged(username)):
-            return self.Videos.getPlaylists()
+            return self.Videos.getPlaylistsWeb()
+
+
+
+
+
 state=StateMgr()
 class MainView:
     def __init__(self,request):
@@ -161,9 +169,10 @@ class MainView:
             if 'form.submitted' in self.request.params:
                 temp_config={"video_path":self.request.params["video_path"],
                     "users":[]}
-                state.write(temp_config)
-                state.addUser(self.request.params["username"],
-                        self.request.params["password"])
+                username=self.request.params["username"]
+                password=self.request.params["password"]
+                video_path=self.request.params["video_path"]
+                state.configure(username,password,video_path)
                 return HTTPFound(location=self.request.route_url("index"))
             return {}
     def isSetup(self):
@@ -215,9 +224,18 @@ class MainView:
                 self.request.matchdict['name'])
         return FileResponse(vid.getThumb())
     
-    @view_config(route_name="playlist_api",renderer="json")
-    def playlistAPI(self):
+    @view_config(route_name="playlist_get",renderer="json")
+    def playlist_get(self):
         print(self.request)
         playlists=state.getPlaylists(self.logged_in)
         print("playlists: "+ str(playlists))
         return {"playlists":playlists}
+    @view_config(route_name="playlist_post",renderer="json")
+    def playlist_post(self):
+        data=json.loads(self.request.body.decode('utf8'))
+        if(data["action"]=="make_playlist"):
+            videos=data["videos"]
+            name=data["playlist_name"]
+            state.makePlaylist(self.logged_in,videos,name)
+
+

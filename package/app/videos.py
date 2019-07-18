@@ -16,17 +16,21 @@ class Video:
     def getFilePath(self):
         return self.path
 class VideoArr:
-    def __init__(self,video_dir,thumbnail_dir):
-        self.thumbnailDir=thumbnail_dir
-        if video_dir is None:
+    def __init__(self,config):
+        if config is None:
             self.videoDir=None
+            self.thumbnailDir="thumbnails"
             self.videoFiles=[]
+            self.playlists=[]
             return
         self.videoDir=""
-        self.setVideoPath(video_dir)
+        self.thumbnailDir=config["thumbnails"]
+        self.setVideoPath(config["video_path"])
         self.genThumbnails()
         self.playlists=[]
+        self.restorePlaylists(config["playlists"])
     def setVideoPath(self,video_dir):
+        print("set video path to "+str(video_dir))
         if(os.path.isdir(video_dir)==False):
             return {"message":"file not found"}
         if(video_dir!=self.videoDir):
@@ -66,13 +70,39 @@ class VideoArr:
     def getVideos(self):
         return self.videoFiles
 
-    def makePlaylist(self,video_names):
-        temp_playlist=[]
+    def restorePlaylists(self,playlists):
+        for playlist in playlists:
+            video_names=[]
+            for video in playlist["videos"]:
+                video_names.append(video["name"])
+            self.makePlaylist(video_names,playlist["name"])
+    def makePlaylist(self,video_names,playlist_name):
+        temp_playlist={"name":playlist_name,"videos":[]}
+        temp_videos=[]
         for name in video_names:
                 temp_vid = self.getVideoByName(name)
                 if(temp_vid!=None):
-                    temp_playlist.append(temp_vid)
+                    temp_videos.append(temp_vid)
+        temp_playlist["videos"]=temp_videos
         self.playlists.append(temp_playlist)
     def getPlaylists(self):
         return self.playlists
-
+    def getPlaylistsWeb(self):
+        out=[]
+        for play in self.playlists:
+            temp_vids=[]
+            for vid in play["videos"]:
+                temp_vids.append({"url":vid.getUrl(),"name":vid.getName()})
+            out.append({"name":play["name"],"videos":temp_vids})
+        return out
+    def getPlaylistsConfig(self):
+        out=[]
+        for play in self.playlists:
+            temp_vids=[]
+            for vid in play["videos"]:
+                temp_vids.append({"url":vid.getUrl(),"name":vid.getName()})
+            out.append({"name":play["name"],"videos":temp_vids})
+        return out
+    def getConfig(self):
+        return {"video_path":self.videoDir,"thumbnails":self.thumbnailDir,
+                "playlists":self.getPlaylistsConfig()}
