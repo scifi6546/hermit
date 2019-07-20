@@ -130,7 +130,7 @@ class MainView:
 
         videoArr_temp=[]
         for i in state.getVideos(self.logged_in):
-            videoArr_temp.append({"url":i.getUrl(),
+            videoArr_temp.append({"url":i.getUrl(),"name":i.getName(),
                 "html_url":self.request.route_url("video_html",url=i.getUrl()),"thumb_url":self.request.route_url("thumbnails",name=i.getName())});
 
         print(self.request.route_url("logout"))
@@ -175,6 +175,16 @@ class MainView:
                 state.configure(username,password,video_path)
                 return HTTPFound(location=self.request.route_url("index"))
             return {}
+    @view_config(route_name="playlists",renderer="playlists.jinja2")
+    def playlistMasterHtml(self):
+        plays = state.getPlaylists(self.logged_in)
+        for i in range(0,len(plays)):
+            plays[i]["thumbnail"]=self.request.route_url("thumbnails",
+                    name=plays[i]["thumbnail"]) 
+        print("plays")
+        print(plays)
+
+        return {"playlists":plays}
     def isSetup(self):
         return state.isSetup
     @view_config(route_name="video") 
@@ -226,16 +236,23 @@ class MainView:
     
     @view_config(route_name="playlist_get",renderer="json")
     def playlist_get(self):
-        print(self.request)
-        playlists=state.getPlaylists(self.logged_in)
-        print("playlists: "+ str(playlists))
-        return {"playlists":playlists}
+        if state.isPriviliged(self.logged_in):
+            playlists=state.getPlaylists(self.logged_in)
+            for i in range(0,len(playlists)):
+                for j in range(0,len(playlists[i]["videos"])):
+                    playlists[i]["videos"][j]["url"]=\
+                        self.request.route_url("video",url=
+                        playlists[i]["videos"][j]["url"])
+            print(self.request)
+            print("playlists: "+ str(playlists))
+            return {"playlists":playlists}
     @view_config(route_name="playlist_post",renderer="json")
     def playlist_post(self):
-        data=json.loads(self.request.body.decode('utf8'))
-        if(data["action"]=="make_playlist"):
-            videos=data["videos"]
-            name=data["playlist_name"]
-            state.makePlaylist(self.logged_in,videos,name)
+        if state.isPriviliged(self.logged_in):
+            data=json.loads(self.request.body.decode('utf8'))
+            if(data["action"]=="make_playlist"):
+                videos=data["videos"]
+                name=data["playlist_name"]
+                state.makePlaylist(self.logged_in,videos,name)
 
 

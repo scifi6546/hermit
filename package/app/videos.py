@@ -90,10 +90,13 @@ class VideoArr:
     def getPlaylistsWeb(self):
         out=[]
         for play in self.playlists:
+            thumb=""
+            if(len(play["videos"])>=1):  
+                thumb=play["videos"][0].getName()
             temp_vids=[]
             for vid in play["videos"]:
                 temp_vids.append({"url":vid.getUrl(),"name":vid.getName()})
-            out.append({"name":play["name"],"videos":temp_vids})
+            out.append({"name":play["name"],"videos":temp_vids,"thumbnail":thumb})
         return out
     def getPlaylistsConfig(self):
         out=[]

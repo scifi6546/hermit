@@ -38,6 +38,7 @@ with Configurator(session_factory=my_session_factory) as config:
     config.add_route("playlist_get","api/playlist_get")
     config.add_route("playlist_post","api/playlist_post")
     config.add_route("thumbnails","thumbnails/{name}")
+    config.add_route("playlists","playlists")
     config.add_static_view(name='static',path='../../static')
 
         #config.add_view(index,route_name='index')

@@ -1,6 +1,7 @@
 .video_div{
 	width: 100%;
-	display: flex;
+	display: block;
+	padding: 15px;
 }
 .video_div a{
 	width:100%;
@@ -21,13 +22,23 @@ html{
 	grid-column-gap: 10px;
 	justify-items: center;
 }
+.playlist{
+	color: white;
+	display: block;
+	background-color: #5a576c;
+	padding: 5px;
+	margin: 10px;
+}
+.playlist_name{
+	text-align: center;
+}
 .topnav{
 	width:100%;
 	background-color: #2c3145;
 	overflow: hidden;
 	
 }
-.topnav a{
+.topnav_link{
 	float: left;
 	padding: 16px;
 	text-align:center;
@@ -35,6 +46,16 @@ html{
 	text-decoration: none;
 	color: #ffffff;
 	font-size: 16px;
+}
+.topnav_active{
+	float: left;
+	padding: 16px;
+	text-align:center;
+	vertical-align: center;
+	text-decoration: none;
+	color: #ffffff;
+	font-size: 16px;
+	background-color: #8c8e99;
 }
 .topnav a:hover{
 	background-color: #4d5161;
@@ -48,4 +69,7 @@ html{
 	margin: 20px;
 }
 .form_div:nth-child(1){ margin: 10px;
+}
+.playlist_add{
+	width: 100%;
 }
