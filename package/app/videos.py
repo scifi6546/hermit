@@ -49,8 +49,8 @@ class VideoArr:
             thumb_path=os.path.join(self.thumbnailDir,vid.getName()+".png")
             print(vid.getFilePath())
             print(thumb_path)
-            comm=["bash","-c","ffmpegthumbnailer -i " + str(vid.getFilePath())+ 
-                    " -o " + str(thumb_path)+ " -s 800"]
+            comm=["bash","-c","ffmpegthumbnailer -i " +'"'+ str(vid.getFilePath())+'"'+ 
+                    " -o " + '"'+ str(thumb_path)+'"'+ " -s 800"]
             print(comm)
             subprocess.run(comm)
             self.videoFiles[i].thumbnailPath=thumb_path
