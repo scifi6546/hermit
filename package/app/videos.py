@@ -52,8 +52,11 @@ class VideoArr:
             comm=["bash","-c","ffmpegthumbnailer -i " +'"'+ str(vid.getFilePath())+'"'+ 
                     " -o " + '"'+ str(thumb_path)+'"'+ " -s 800"]
             print(comm)
-            subprocess.run(comm)
-            self.videoFiles[i].thumbnailPath=thumb_path
+            try:
+                subprocess.run(comm)
+                self.videoFiles[i].thumbnailPath=thumb_path
+            except:
+                print("command failed")
 
     def getThumbnailPath(self):
         return self.thumbnailDir
