@@ -10,6 +10,13 @@
 	width: 100%;
 	overflow: hidden;
 }
+.video{
+	width: 100%;
+}
+.video_playlist{
+	width:80%;
+}
+
 html{
 	background-color: #242327;
 }
@@ -18,7 +25,7 @@ html{
 	padding: 10px;
 	display: grid;
 	margin: 10px;
-	grid-template-columns: auto auto;
+	grid-template-columns: auto;
 	grid-column-gap: 10px;
 	justify-items: center;
 }
@@ -28,6 +35,20 @@ html{
 	background-color: #5a576c;
 	padding: 5px;
 	margin: 10px;
+}
+.playlist_play{
+	color: white;
+	display: flex;
+	background-color: #5a576c;
+	padding: 5px;
+	margin: 10px;
+}
+.thumb_container{
+	max-width: 200px;
+	overflow-y:scroll;
+}
+.playlist_vid_img{
+	width: 100%;
 }
 .playlist_name{
 	text-align: center;

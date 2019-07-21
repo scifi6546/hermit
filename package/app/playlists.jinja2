@@ -23,10 +23,18 @@
 </div>
 <script>
 playlist_html=
-"<div class='playlist' id='{playlist.name}'>"+
-	"<video controls class='video'>"+
+"<div class='playlist_play' id='{playlist.name}'>"+
+	"<video controls class='video_playlist'>"+
 	"<source class='video_src' src='{video.url}'>"+
 	"</video>"
+"</div>"
+vid_thumbnail_cont=
+"<div class='thumb_container'>"+
+"</div>"
+vid_thumbnail_html=
+"<div class = 'playlist_vid_thumbnail' id='{vid.name}'>"+
+
+	"<img class='playlist_vid_img' src='{vid.thumb}'>"+
 "</div>"
 playlists=[]
 run_list={}
@@ -50,12 +58,44 @@ function runList(name){
 	temp_html=temp_html.replace(/{video.url}/gi,run_list["videos"][0]["url"]);
 	console.log(temp_html);
 	var element = $(temp_html);
+	var cont = $(vid_thumbnail_cont);
+	for(var i=0;i<run_list["videos"].length;i++){
+		thumb_html=vid_thumbnail_html.replace(/{vid.thumb}/gi,
+			run_list["videos"][i]["thumbnail"]);
+		thumb_html=thumb_html.replace(/{vid.name}/gi,
+			run_list["videos"][i]["name"]);
+		thumb_html=$(thumb_html);
+		thumb_html.on('click',function(event_in){
+			console.log(event_in);
+			name = event_in.currentTarget.id;
+			playVid(name);
+		});
+		cont.append(thumb_html);
+
+
+		console.log(run_list["videos"][i]);
+	}
+	element.append(cont);
 	$(".body").append(element);
 	console.log($(".video"));
 
-	var vid = $(".video")[0]
+	var vid = $(".video_playlist")[0]
 	vid.onvolumechange=function(){
 		volume=vid.volume;
+	}
+	function playVid(name){
+		for(var i=0;i<run_list["videos"].length;i++){
+			if(run_list["videos"][i]["name"]===name){
+				index=i;
+		    		var vid_src = $(".video_src")[0];
+				vid_src.src=run_list["videos"][index]["url"];
+				var vid = $(".video_playlist")[0]
+				vid.load();
+				vid.current_time=0;
+				vid.volume=volume
+				vid.play();
+			}
+		}
 	}
 	vid.onended=function(){
 		console.log("ended");
@@ -63,9 +103,9 @@ function runList(name){
 			index++;
 			console.log("finished vid");
 			console.log($(".video_src"))
-		    	var vid_src = $(".video_src")[0]
+		    	var vid_src = $(".video_src")[0];
 			vid_src.src=run_list["videos"][index]["url"];
-			var vid = $(".video")[0]
+			var vid = $(".video_playlist")[0]
 			vid.load();
 			vid.current_time=0;
 			vid.volume=volume

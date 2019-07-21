@@ -243,6 +243,11 @@ class MainView:
                     playlists[i]["videos"][j]["url"]=\
                         self.request.route_url("video",url=
                         playlists[i]["videos"][j]["url"])
+                    print("\n\nplaylists: ")
+                    print(playlists[i]["videos"][j]["name"])
+                    playlists[i]["videos"][j]["thumbnail"]=\
+                        self.request.route_url("thumbnails",name=
+                        playlists[i]["videos"][j]["name"])
             print(self.request)
             print("playlists: "+ str(playlists))
             return {"playlists":playlists}

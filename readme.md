@@ -17,6 +17,8 @@ Hermit has also not been audited so the security is probably not very good. Go a
     source ./venv/bin/activate
   Install dependicies
     pip3 install -e pacakge/
+  Install ffmpegthumbnailer
+    (on ubuntu) apt install ffmpegthumbnailer
   run the app
     gunicorn app:app -b 0.0.0.0:8080 --timeout "120" -e HERMIT_CONFIG=config.json
 ## License
