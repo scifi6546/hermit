@@ -1,5 +1,6 @@
 import json
-CONFIG_PATH="/config/config.json"
+import os
+CONFIG_PATH=os.environ["HERMIT_CONFIG"]
 class Config:
     def __init__(self):
         self.config={}

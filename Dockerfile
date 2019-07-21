@@ -12,7 +12,7 @@ RUN ls -al ~/app
 RUN export PATH="/home/appuser/.local/bin:$PATH" && mkdir ~/app/thumbnails && pip3 install --user -e package/
 RUN ls /home/appuser/.local/bin
 EXPOSE 8080
-CMD ["/home/appuser/.local/bin/gunicorn","app:app","-b","0.0.0.0:8080","--timeout","120"]
+CMD ["/home/appuser/.local/bin/gunicorn","app:app","-b","0.0.0.0:8080","--timeout","120","-e","HERMIT_CONFIG=$HERMIT_CONFIG"]
 
 #CMD ["python","package/app/main.py"]
 
