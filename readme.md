@@ -10,18 +10,26 @@ Hermit by default does not work over https. I highly recomend using a reverse pr
 Hermit has also not been audited so the security is probably not very good. Go at your own risk!
 ## Run Instructions
   To run this program on docker run 
+  
     ```docker run -e HERMIT_CONFIG=/home/app/config.json scifi6546/hermit```
+    
   to run this app as a python app first create a venv with
+  
   ```python3 -m venv venv```
+  
   Activate the venv
+  
    ``` source ./venv/bin/activate ```
+   
   Install dependicies
+  
   ```  pip3 install -e pacakge/ ```
-  Install ffmpegthumbnailer
-    (on ubuntu)
+  Install ffmpegthumbnailer (on ubuntu)
+    
     ```apt install ffmpegthumbnailer```
   run the app
-  ```  gunicorn app:app -b 0.0.0.0:8080 --timeout "120" -e HERMIT_CONFIG=config.json ```
+ 
+ ```  gunicorn app:app -b 0.0.0.0:8080 --timeout "120" -e HERMIT_CONFIG=config.json ```
 ## License
 Hermit is licensed under the gplv3
 
