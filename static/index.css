@@ -38,10 +38,12 @@ html{
 }
 .playlist_play{
 	color: white;
+	flex-direction: row;
 	display: flex;
 	background-color: #5a576c;
 	padding: 5px;
 	margin: 10px;
+	overflow: hidden;
 }
 .thumb_container{
 	max-width: 200px;
