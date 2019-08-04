@@ -3,6 +3,9 @@
 	display: block;
 	padding: 15px;
 }
+video{
+	width: 100%;
+}
 .video_div a{
 	width:100%;
 }
@@ -10,22 +13,16 @@
 	width: 100%;
 	overflow: hidden;
 }
-.video{
-	width: 100%;
-}
-.video_playlist{
-	width:80%;
-}
-
 html{
 	background-color: #242327;
+	-webkit-text-size-adjust: none;
 }
 .body{
 	background-color: #3c3b42;
 	padding: 10px;
 	display: grid;
 	margin: 10px;
-	grid-template-columns: auto;
+	grid-template-columns: auto auto;
 	grid-column-gap: 10px;
 	justify-items: center;
 }
@@ -36,22 +33,6 @@ html{
 	padding: 5px;
 	margin: 10px;
 }
-.playlist_play{
-	color: white;
-	flex-direction: row;
-	display: flex;
-	background-color: #5a576c;
-	padding: 5px;
-	margin: 10px;
-	overflow: hidden;
-}
-.thumb_container{
-	max-width: 200px;
-	overflow-y:scroll;
-}
-.playlist_vid_img{
-	width: 100%;
-}
 .playlist_name{
 	text-align: center;
 }
@@ -61,23 +42,26 @@ html{
 	overflow: hidden;
 	
 }
+.form_body{
+	display: grid;
+}
 .topnav_link{
 	float: left;
-	padding: 16px;
+	padding: 12px;
 	text-align:center;
 	vertical-align: center;
 	text-decoration: none;
 	color: #ffffff;
-	font-size: 16px;
+	font-size: 12px;
 }
 .topnav_active{
 	float: left;
-	padding: 16px;
+	padding: 12px;
 	text-align:center;
 	vertical-align: center;
 	text-decoration: none;
 	color: #ffffff;
-	font-size: 16px;
+	font-size: 12px;
 	background-color: #8c8e99;
 }
 .topnav a:hover{
@@ -95,4 +79,10 @@ html{
 }
 .playlist_add{
 	width: 100%;
+}
+@media only screen and (max-width: 400px){
+	
+	[class*="body"]{
+		grid-template-columns:auto;
+	}
 }

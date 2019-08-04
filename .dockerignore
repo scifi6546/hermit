@@ -1,0 +1,5 @@
+videos/*
+thumbnails/*
+.git/*
+Cargo.lock
+target/*

@@ -1,18 +1,14 @@
-FROM python
-run apt update && apt install ffmpegthumbnailer -y
-RUN groupadd -g 999 appuser && \
-    useradd -r -u 999 -g appuser appuser
-WORKDIR /home/appuser/app
-RUN chown appuser:appuser /home/appuser
-RUN chown appuser /home/appuser/app
-USER appuser
-COPY --chown=999 . /home/appuser/app
-RUN ls -al ~/
-RUN ls -al ~/app
-RUN export PATH="/home/appuser/.local/bin:$PATH" && mkdir ~/app/thumbnails && pip3 install --user -e package/
-RUN ls /home/appuser/.local/bin
-EXPOSE 8080
-CMD ["/home/appuser/.local/bin/gunicorn","app:app","-b","0.0.0.0:8080","--timeout","120","-e","HERMIT_CONFIG=$HERMIT_CONFIG"]
-
-#CMD ["python","package/app/main.py"]
-
+FROM rust:1.36-buster
+RUN apt update && apt install -y ffmpegthumbnailer
+WORKDIR /usr/src/hermit
+COPY . .
+RUN cargo install --path .
+EXPOSE 8088
+RUN useradd -ms /bin/bash app_user
+USER app_user
+WORKDIR /home/app_user
+COPY ./static ./static
+COPY ./templates ./templates
+RUN mkdir thumbnails
+RUN ls -alh
+CMD ["hermit-rust"]

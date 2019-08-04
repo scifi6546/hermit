@@ -1,0 +1,18 @@
+[package]
+name = "hermit-rust"
+version = "0.1.0"
+authors = ["nick <scifi6546@protonmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix-web="*"
+actix-session="*"
+actix-files="*"
+serde={version="*", features=["derive"]}
+serde_json="*"
+rust-argon2="0.4.0"
+rand="*"
+log="*"
+env_logger="*"
+tera="*"
+lazy_static="*"
