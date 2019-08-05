@@ -30,6 +30,10 @@ impl Video{
         out.push_str(&self.thumbnail_name.clone());
         return out;
     }
+    pub fn get_path(&self)->String{
+        return self.path.clone();
+    }
+
     pub fn get_vid_html(&self,path_base:String,thumbnail_base:String)->VideoHtml{
         return VideoHtml{
             name:self.name.clone(),
@@ -53,7 +57,7 @@ fn is_video(path_str: String)->bool{
         return false;
     }
 }
-pub fn get_videos(read_dir:String,thumb_dir:String)->Vec<Video>{
+pub fn get_videos(read_dir:String,thumb_dir:String,thumb_res:u32)->Vec<Video>{
     let path=Path::new(&read_dir);
     let thumb_path=Path::new(&thumb_dir);
     assert!(path.is_dir());
@@ -70,7 +74,7 @@ pub fn get_videos(read_dir:String,thumb_dir:String)->Vec<Video>{
         //foo.bar();
         let path_str:String = entry.path().to_str().unwrap().to_string();
         if is_video(path_str){
-            let vid = make_thumbnail(entry,read_dir.clone(),thumb_dir.clone());
+            let vid = make_thumbnail(entry,read_dir.clone(),thumb_dir.clone(),thumb_res);
             out_vid.push(vid);
         }
 
@@ -79,10 +83,11 @@ pub fn get_videos(read_dir:String,thumb_dir:String)->Vec<Video>{
     print_videos(out_vid.clone());
     return out_vid;
 }
-fn make_thumbnail(video_entry: std::fs::DirEntry, vid_dir:String,thumb_dir:String)->Video{
+fn make_thumbnail(video_entry: std::fs::DirEntry, vid_dir:String,thumb_dir:String,resolution:u32)->Video{
     let vid_path_temp:&Path=Path::new(vid_dir.as_str());
     let vid_path = vid_path_temp.join(video_entry.file_name().to_str().unwrap());
-    let thumb_info = thumbnail::make_thumb(vid_path.to_str().unwrap().to_string(),thumb_dir.clone()).clone();
+    let thumb_info = thumbnail::make_thumb(vid_path.to_str().unwrap().to_string(),
+        thumb_dir.clone(),resolution).clone();
     let mut vid = Video{path:"".to_string(),
         name:"".to_string(),
         thumbnail_path: thumb_info[0].clone(), 

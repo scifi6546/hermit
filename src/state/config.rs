@@ -18,7 +18,8 @@ pub struct VideoConf{
 #[derive(Clone)]
 pub struct Config{
     pub users:Vec<User>,
-    pub videos:VideoConf
+    pub videos:VideoConf,
+    pub thumb_res: u32,
 
 }
 pub fn empty()->Config{
@@ -28,6 +29,7 @@ pub fn empty()->Config{
         thumbnails: "thumbnails".to_string(),
         playlists: [].to_vec(),
     },
+    thumb_res: 0
     }
 }
 fn get_config()->std::result::Result<Config,String>{

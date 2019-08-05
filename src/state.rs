@@ -3,8 +3,7 @@ mod config;
 use actix_web::{middleware::Logger, web,App,HttpResponse,HttpServer,Responder,Result};
 use actix_session::{Session, CookieSession};
 use std::sync::RwLock;
-use log::debug;
-use actix_files;
+use actix_files::NamedFile;
 use tera::Tera;
 use serde::{Serialize,Deserialize};
 mod users;
@@ -69,6 +68,18 @@ impl State{
 			return Err("not authorized".to_string())
 		}
 	}
+        pub fn get_vid_path(&self,user_token:String,vid_name:String)->Result<String,String>{
+            if self.is_auth(user_token){
+                for vid in self.video_array.clone(){
+                    if vid.name==vid_name{
+                        return Ok(vid.get_path());
+                    }
+                }
+                return Err("file not found".to_string());
+            }else{
+                return Err("not authorized".to_string());
+            }
+        }
 	pub fn get_vid_dir(&self)->String{
 		return self.config_file.videos.video_path.clone();
 	}
@@ -78,14 +89,37 @@ impl State{
         pub fn is_setup(&self)->bool{
             return self.setup_bool;
         }
+        fn set_thumb_res(&mut self,thumb_res: u32)->Result<String,String>{
+            self.config_file.thumb_res=thumb_res;
+            let res = config::write_conf(self.config_file.clone());
+            if !res.is_ok(){
+                return Err("failed to write config".to_string());
+            }
+            self.video_array=videos::get_videos(self.config_file.videos.video_path.clone(),
+                self.config_file.videos.thumbnails.clone(),thumb_res);
+            return Ok("sucess".to_string());
+        }
+        pub fn set_thumb_res_auth(&mut self,token:String,thumb_res:u32)->Result<String,String>{
+            if self.is_auth(token){
+                let final_res = self.set_thumb_res(thumb_res);
+                if final_res.is_ok(){
+                    return Ok("sucess".to_string());
+                }else{
+                    return final_res;
+                }
+            }
+            return Err("permission denied".to_string());
+        }
         pub fn setup(&mut self,video_dir:String, 
                      username:String, 
-                     password:String)->Result<String,String>{
+                     password:String,
+                     thumb_res: u32)->Result<String,String>{
             if self.is_setup(){
                 return Err("already setup".to_string());
             }
-            let reload_res = self.reload_server(video_dir);
+            let reload_res = self.reload_server(video_dir,thumb_res);
             let add_user_res = self._add_user(username,password);
+
             if reload_res.is_ok() && add_user_res.is_ok(){
                 self.setup_bool=true;
                 return Ok("Sucess".to_string());
@@ -94,11 +128,13 @@ impl State{
             }
 
         }
-        pub fn reload_server(&mut self,video_dir:String, 
+        pub fn reload_server(&mut self,video_dir:String,thumb_res:u32
                      )->Result<String,String>{
             self.config_file.videos.video_path=video_dir.clone();
             self.config_file.videos.thumbnails="thumbnails".to_string();
-            self.video_array=videos::get_videos(video_dir.clone(),"thumbnails".to_string());
+            self.config_file.thumb_res=thumb_res;
+            self.video_array=videos::get_videos(video_dir.clone(),"thumbnails".to_string(),
+                    thumb_res);
             return Ok("done".to_string());
         }
     pub fn print_users(&self){
@@ -137,7 +173,7 @@ fn init_state()->State{
 
         let mut out=State{
             config_file: cfg.clone(),
-            video_array: videos::get_videos(vid_dir,"thumbnails".to_string()),
+            video_array: videos::get_videos(vid_dir,"thumbnails".to_string(),cfg.thumb_res),
             users: users::new(),
             setup_bool: true,
         };
@@ -188,9 +224,9 @@ pub fn run_webserver(state_in:&mut State){
             .route("/setup",web::get().to(setup))
             .route("/api/setup",web::post().to(api_setup))
             .route("/api/logout",web::post().to(logout_api))
-
+            .route("/api/settings",web::post().to(settings_api))
+            .route("/videos/{video_name}",web::get().to(video_files))
             .service(actix_files::Files::new("/static","./static/"))
-        	.service(actix_files::Files::new("/videos",video_dir.clone()))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
 			
     })
@@ -254,17 +290,21 @@ struct Index{
 	videos: Vec<videos::VideoHtml>
 }
 pub fn index(data:web::Data<RwLock<State>>, session:Session)->impl Responder{
-        println!("getting token");
-        let temp = session.get("token");
-        let mut token:String="".to_string();
-        if temp.is_ok(){
-            let temp_token = temp.ok().unwrap();
-            if temp_token.is_some(){
-                token=temp_token.unwrap();
-            }
+    let state_data = data.read().unwrap();
+    if !state_data.is_setup(){
+        println!("is not setup");
+        return HttpResponse::TemporaryRedirect().header("location", "/setup").finish();
+    }
+    println!("getting token");
+    let temp = session.get("token");
+    let mut token:String="".to_string();
+    if temp.is_ok(){
+        let temp_token = temp.ok().unwrap();
+        if temp_token.is_some(){
+            token=temp_token.unwrap();
         }
-        println!("getting state data");
-	let state_data = data.read().unwrap();
+    }
+    println!("getting state data");
     let index_data = state_data.get_videos(token); 
     if index_data.is_ok(){
 	    let index_data=Index{
@@ -308,15 +348,50 @@ pub fn settings(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
     }
 }
 #[derive(Serialize,Deserialize)]
+pub struct SettingsStruct{
+    action: String,
+    args: String,
+}
+#[derive(Serialize,Deserialize)]
+pub struct SettingsAddUserStruct{
+    username:String,
+    password:String,
+}
+pub fn settings_api(info: web::Json<SettingsStruct>,data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    if info.action=="set_resolution".to_string(){
+        let temp_res = info.args.parse::<u32>();
+        if temp_res.is_ok(){
+            let mut state = data.write().unwrap();
+            let token_res = session.get("token");
+            if token_res.is_ok(){
+                let final_res = state.set_thumb_res_auth(token_res.unwrap().unwrap(),temp_res.unwrap());
+                if final_res.is_ok(){
+                    return Ok("sucess".to_string());
+                }else{
+                    return Ok("failed to set thumbnail".to_string());
+                }
+            }else{
+                return Ok("not authorized".to_string());
+            }
+        }else{
+            return Ok("resolution not found".to_string());
+        }
+
+    }else{
+        return Ok("action not found".to_string());
+    }
+}
+#[derive(Serialize,Deserialize)]
 struct SetupStruct{
     video_dir:String,
     username:String,
     password:String,
+    thumb_res:u32,
 }
 fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
              session:Session)->Result<String>{
     let mut state_data = data.write().unwrap();
-    let res =  state_data.setup(info.video_dir.clone(),info.username.clone(),info.password.clone());
+    let res =  state_data.setup(info.video_dir.clone(),info.username.clone(),info.password.clone(),info.thumb_res);
     if res.is_ok(){
         return Ok("Sucess".to_string());
     }else{
@@ -376,4 +451,29 @@ pub fn vid_html(data:web::Data<RwLock<State>>,session:Session,path: web::Path<(S
 	//then use videos.jinja2 to create the data and return it
 		
     HttpResponse::Ok().body(vid_name)
+}
+pub fn video_files(data:web::Data<RwLock<State>>,session:Session,
+                path:web::Path<(String,)>)-> impl Responder{
+    let token_res = session.get("token");
+    let state_data = data.read().unwrap();
+    let vid_name:String = path.0.clone();
+    println!("vid_name: {}",vid_name);
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let file_path = state_data.get_vid_path(token,vid_name);
+        if file_path.is_ok(){
+            let file_res = NamedFile::open(file_path.unwrap());
+            if file_res.is_ok(){
+                return file_res.unwrap();
+            }
+            else{
+                return NamedFile::open("empty.txt").unwrap();
+
+            }
+        }
+    }else{
+        return NamedFile::open("empty.txt").unwrap();
+    }
+
+        return NamedFile::open("empty.txt").unwrap();
 }

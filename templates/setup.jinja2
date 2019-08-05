@@ -17,6 +17,9 @@
 		<div class="form_item">
 		Password: <input type="password" class="password"/>
 		</div>
+		<div class= "form_item">
+			Thumbnail Resolution: <input type="text" class="thumb_res"/>
+		</div>
 		<button class="submit">Submit</button>
 
 	</div>
@@ -29,8 +32,10 @@
 			var username = $(".username").val();
 			var video_dir = $(".video_dir").val();
 			var thumbnail_dir=$(".thumbnail_dir").val();
+			var thumb_res = Math.floor($(".thumb_res").val());
 			output = {password:password,username:username,
-				video_dir:video_dir,thumbnail_dir:thumbnail_dir};
+				video_dir:video_dir,thumbnail_dir:thumbnail_dir,
+				thumb_res:thumb_res};
 			output = JSON.stringify(output);
 			console.log(output);
 			console.log($(".password"));
