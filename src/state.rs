@@ -14,6 +14,10 @@ pub struct State{
     pub users: users::UserVec,
     pub setup_bool:bool,
 }
+#[derive(Clone,Serialize)]
+pub struct UserOut{
+    pub username:String
+}
 impl State{
     //returns cookie if user is suscessfully authenticated
     pub fn auth_user(&mut self,username:String,password:String)->Result<String,String>{
@@ -137,6 +141,17 @@ impl State{
                     thumb_res);
             return Ok("done".to_string());
         }
+        pub fn get_users(&self,token:String)->Result<Vec<UserOut>,String>{
+            if self.is_auth(token){
+                let mut out:Vec<UserOut> = Vec::new();
+                for user in self.users._users.clone(){
+                    out.push(UserOut{username:user.name.clone()});
+                }
+                return Ok(out);
+            }else{
+                return Err("not authorized".to_string());
+            }
+        }
     pub fn print_users(&self){
         println!("Users: ");
         println!("{}",self.users.print_users());    
@@ -215,9 +230,10 @@ pub fn run_webserver(state_in:&mut State){
             ).wrap( Logger::default())
 			.register_data(shared_state.clone())
             .route("/api/login",web::post().to(login))
-			.route("/api/videos",web::get().to(get_videos))
-			.route("/api/add_user",web::post().to(add_user))
-			.route("/vid_html/{name}",web::get().to(vid_html))
+	    .route("/api/videos",web::get().to(get_videos))
+	    .route("/api/add_user",web::post().to(add_user))
+            .route("/api/get_user",web::get().to(get_users))
+            .route("/vid_html/{name}",web::get().to(vid_html))
             .route("/settings",web::get().to(settings))
             .route("/", web::get().to(index))
             .route("/login",web::get().to(login_html))
@@ -277,6 +293,32 @@ fn add_user(info:web::Json<UserReq>,data:web::Data<RwLock<State>>,session:Sessio
         return Ok("sucess".to_string());
     }
     return Ok("failed".to_string());
+}
+#[derive(Serialize)]
+pub struct UsersApi{
+    users:Vec<UserOut>
+}
+pub fn get_users(data: web::Data<RwLock<State>>,session:Session)->impl Responder{
+    let token = session.get("token");
+    if token.is_ok(){
+        let state = data.read().unwrap();
+
+        let out = state.get_users(token.unwrap().unwrap());
+        if out.is_ok(){
+            let body = serde_json::to_string(&UsersApi{users:out.unwrap()});
+            if body.is_ok(){
+                let message_body = body.unwrap();
+                println!("message: {}",message_body);
+                return HttpResponse::Ok().body(message_body);
+            }else{
+                return HttpResponse::InternalServerError().body("");
+            }
+        }else{
+            return HttpResponse::Unauthorized().body("");
+        }
+    }else{
+        return HttpResponse::Unauthorized().body("");
+    }
 }
 fn get_videos(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
 	let token = session.get("token").unwrap().unwrap();

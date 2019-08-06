@@ -3,6 +3,7 @@ use serde::{Deserialize,Serialize};
 use std::path::Path;
 use std::thread;
 use std::sync::mpsc::channel;
+use std::sync::{Arc,Mutex,RwLock};
 
 mod thumbnail;
 #[derive(Clone)]
@@ -67,19 +68,40 @@ pub fn get_videos(read_dir:String,thumb_dir:String,thumb_res:u32)->Vec<Video>{
     let path=Path::new(&read_dir);
     let mut out_vid:Vec<Video>=Vec::new();
     //Todo make thumbnail creation run in parallel
-    
+    let mut threads = Vec::new();    
+    let mutex_videos=Mutex::new(Vec::new());
+    let arc_videos=Arc::new(mutex_videos);
     for entry in fs::read_dir(path).unwrap(){
         let entry = entry.unwrap();
         //let foo = channel();
         //foo.bar();
         let path_str:String = entry.path().to_str().unwrap().to_string();
         if is_video(path_str){
-            let vid = make_thumbnail(entry,read_dir.clone(),thumb_dir.clone(),thumb_res);
-            out_vid.push(vid);
+            let mut arc_vec = Arc::clone(&arc_videos);
+            let read_dir_arc = Arc::new(RwLock::new(read_dir.clone()));
+            let thumb_dir_arc = Arc::new(RwLock::new(thumb_dir.clone()));
+            let mut read_dir_arc_c = Arc::clone(&read_dir_arc);
+            let mut thumb_dir_arc_c = Arc::clone(&thumb_dir_arc);
+            threads.push(thread::spawn(move || {
+                let temp = read_dir_arc_c.read();
+                let read_dir_temp = (*read_dir_arc_c.read().unwrap()).clone();
+                let thumb_dir_temp = (*thumb_dir_arc_c.read().unwrap()).clone();
+                let vid = make_thumbnail(entry,read_dir_temp,thumb_dir_temp,thumb_res);
+                let mut vid_vec = &mut arc_vec.lock().unwrap();
+                vid_vec.push(vid);
+            }));
+
         }
 
         println!("file found");
     }
+    for thread_single in threads{
+        thread_single.join();
+    }
+    
+    let mut arc_vec = Arc::clone(&arc_videos);
+    out_vid=arc_vec.lock().unwrap().clone();
+
     print_videos(out_vid.clone());
     return out_vid;
 }

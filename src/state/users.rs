@@ -8,7 +8,7 @@ pub struct User{
 }
 #[derive(Clone)]
 pub struct UserVec{
-    _users:Vec<User>
+    pub _users:Vec<User>
 }
 #[derive(Clone)]
 pub struct UserConf{
@@ -16,7 +16,12 @@ pub struct UserConf{
     pub password: String,
 }
 impl UserVec{
-    pub fn add_user(&mut self,username:String,password:String){
+    pub fn add_user(&mut self,username:String,password:String)->Result<String,String>{
+        for user in self._users.clone(){
+            if username==user.name{
+                return Err("user already exists".to_string());
+            }
+        }
         let config=Config::default();
         let hash=argon2::hash_encoded(&password.into_bytes(),
             &get_salt(),&config).unwrap();
@@ -25,6 +30,7 @@ impl UserVec{
             password:hash,token:"".to_string()};
 
         self._users.push(user_temp);
+        return Ok("success".to_string());
     }
     pub fn load_user(&mut self,username:String,hashed_password:String)->Result<String,String>{
         let user_temp = User{name:username,password:hashed_password,token:"".to_string()};
