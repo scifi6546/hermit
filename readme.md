@@ -16,8 +16,10 @@ Next type:
 
 ```cargo run```
 
-
 and you have built the repo.
+## SSL encryption
+Hermit automatically runs with ssl encryption at port 8443. to disable ssl encryption run the program
+with the arguments -ssl no
 ## Screenshots:
 ![alt-text](screenshots/login.png)
 ![alt-text](screenshots/videos.png)

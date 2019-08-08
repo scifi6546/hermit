@@ -1,8 +1,12 @@
 mod videos;
 mod config;
 use actix_web::{middleware::Logger, web,App,HttpResponse,HttpServer,Responder,Result};
+use std::path::Path;
+use std::process::Command;
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use actix_session::{Session, CookieSession};
 use std::sync::RwLock;
+
 use actix_files::NamedFile;
 use tera::Tera;
 use serde::{Serialize,Deserialize};
@@ -13,6 +17,7 @@ pub struct State{
     pub video_array: Vec<videos::Video>,
     pub users: users::UserVec,
     pub setup_bool:bool,
+    pub use_ssl:bool,//whether or not to redirect to ssl
 }
 #[derive(Clone,Serialize)]
 pub struct UserOut{
@@ -180,7 +185,11 @@ lazy_static!{
 		tera
 	};
 }
-fn init_state()->State{
+//used to declare things that will be set in the cli args
+struct StartupOptions{
+    use_ssl:bool,//whether or not to redirect to https
+}
+fn init_state(startup_otions:StartupOptions)->State{
     let temp_cfg=config::load_config();
     if temp_cfg.is_ok(){
         let cfg = temp_cfg.ok().unwrap();
@@ -191,6 +200,7 @@ fn init_state()->State{
             video_array: videos::get_videos(vid_dir,"thumbnails".to_string(),cfg.thumb_res),
             users: users::new(),
             setup_bool: true,
+            use_ssl:startup_otions.use_ssl,
         };
         for user in cfg.users.clone(){
             let res = out.users.load_user(user.username,user.passwd);
@@ -202,28 +212,45 @@ fn init_state()->State{
         return out;
     }
     println!("error: {}",temp_cfg.clone().err().unwrap());
-    return empty_state();
+    return empty_state(startup_otions);
 
 }
 //returns an empty state
-fn empty_state()->State{
+fn empty_state(startup_otions:StartupOptions)->State{
     return State{
         config_file: config::empty(),
         video_array: [].to_vec(),
         users: users::new(),
         setup_bool: false,
+        use_ssl: startup_otions.use_ssl
     }
 }
-pub fn run_webserver(state_in:&mut State){
+fn make_ssl_key(){
+    if !Path::new("key.pem").exists() || !Path::new("cert.pem").exists(){
+        println!("making ssl");
+        let res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
+            .arg("-nodes").arg("-keyout").arg("key.pem").arg("-out").arg("cert.pem")
+            .arg("-days").arg("365").arg("-subj").arg("/CN=localhost").output();
+        println!("done with ssl");
+    }
+}
+pub fn run_webserver(state_in:&mut State,use_ssl:bool){
     let video_dir = state_in.get_vid_dir();
     let thumb_dir= state_in.get_thumb_dir();
     let temp_state = RwLock::new(state_in.clone());
     let shared_state = web::Data::new(temp_state);
-
+    // load ssl keys
+    make_ssl_key();
+    let mut builder =
+        SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+    builder
+        .set_private_key_file("key.pem", SslFiletype::PEM)
+        .unwrap();
+    builder.set_certificate_chain_file("cert.pem").unwrap();
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
 	env_logger::init();
-    HttpServer::new(move || {
+    let http_server = HttpServer::new(move || {
         App::new().wrap(
             CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
                     .secure(false)
@@ -245,15 +272,28 @@ pub fn run_webserver(state_in:&mut State){
             .service(actix_files::Files::new("/static","./static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
 			
-    })
-    .bind("0.0.0.0:8088")
-    .unwrap()
-    .run()
-    .unwrap();
+    });
+    if use_ssl{
+        // load ssl keys
+        make_ssl_key();
+        let mut builder =
+            SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+        builder
+            .set_private_key_file("key.pem", SslFiletype::PEM)
+            .unwrap();
+        builder.set_certificate_chain_file("cert.pem").unwrap();
+        http_server.bind_ssl("0.0.0.0:8443",builder).unwrap().run().unwrap();
+    }
+    else{
+        http_server.bind("0.0.0.0:8088").unwrap()
+        .run()
+        .unwrap();
+    }
 }
-pub fn init(){
-    let mut state_struct = init_state();
-    run_webserver(&mut state_struct);
+//starts the web server, if use_ssl is true than all requests will be sent through https
+pub fn init(use_ssl:bool){
+    let mut state_struct = init_state(StartupOptions{use_ssl:use_ssl});
+    run_webserver(&mut state_struct,use_ssl);
 }
 #[derive(Deserialize)]
 struct UserReq{
@@ -331,6 +371,8 @@ fn get_videos(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
 struct Index{
 	videos: Vec<videos::VideoHtml>
 }
+//todo redirect to https. I need to figure out how to do that
+//Current Ideas: detect if user is on http, if on http redirect to https
 pub fn index(data:web::Data<RwLock<State>>, session:Session)->impl Responder{
     let state_data = data.read().unwrap();
     if !state_data.is_setup(){
