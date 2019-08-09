@@ -50,7 +50,13 @@ pub struct VideoDB{
     thumb_dir:String,
 }
 impl VideoDB{
-    fn make_thumbnails(&self)->Result<String,String>{
+    fn make_thumbnails(&mut self)->Result<String,String>{
+        for file in self.DataBase.iter(){
+            //make thumbnail 
+            if file.is_video(){
+                println!("todo add thumbnail");
+            }
+        }
         return Err("todo".to_string());
     }
 }

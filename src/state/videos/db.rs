@@ -21,6 +21,17 @@ pub struct FileData{
     extension:String,
     metadata:Metadata,
 }
+impl FileData{
+    pub fn is_video(&self)->bool{
+        if self.extension=="m4v".to_string() || self.extension=="ogg".to_string() ||
+            self.extension=="mp4".to_string(){
+            
+            return true;
+        }else{
+            return false;
+        }
+    }
+}
 #[derive(Clone,Serialize,Deserialize)]
 pub struct FileDB{
     files:Vec<FileData>,
@@ -66,7 +77,11 @@ impl FileDB{
             return Err("failed to create output string".to_string());
         }
     }
-     
+    //gets mutable iterator of FileData
+    pub fn iter(&mut self)->std::slice::IterMut<'_,FileData>{
+        let iterator = self.files.iter_mut();
+        return iterator;
+    }
     //compares to files on disk and updates internal record accordingly
     pub fn compare_disk(&mut self)->Result<String,String>{
         self.sort_by_filename();
