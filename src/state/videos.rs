@@ -6,6 +6,7 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc,Mutex,RwLock};
 
 mod thumbnail;
+mod db;
 #[derive(Clone)]
 pub struct Video{
     path: String,
@@ -44,6 +45,15 @@ impl Video{
         };
     }
 }
+pub struct VideoDB{
+    DataBase: db::FileDB,
+    thumb_dir:String,
+}
+impl VideoDB{
+    fn make_thumbnails(&self)->Result<String,String>{
+        return Err("todo".to_string());
+    }
+}
 fn is_video(path_str: String)->bool{
     let path = Path::new(&path_str);
     let ext_opt = path.extension();
@@ -58,6 +68,17 @@ fn is_video(path_str: String)->bool{
         return false;
     }
 }
+pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)->Result<VideoDB,String>{
+    let make_db = db::new(database_path,read_dir);
+    if make_db.is_ok(){
+        let mut video_db=VideoDB{DataBase:make_db.ok().unwrap(),thumb_dir:thumb_dir};
+        video_db.make_thumbnails();
+        return Ok(video_db);
+    }else{
+        return Err(make_db.err().unwrap());
+    }
+}
+//Need to delete this
 pub fn get_videos(read_dir:String,thumb_dir:String,thumb_res:u32)->Vec<Video>{
     let path=Path::new(&read_dir);
     let thumb_path=Path::new(&thumb_dir);
