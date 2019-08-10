@@ -240,13 +240,14 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
     let temp_state = RwLock::new(state_in.clone());
     let shared_state = web::Data::new(temp_state);
     // load ssl keys
-    make_ssl_key();
+    /*
     let mut builder =
         SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
         .set_private_key_file("key.pem", SslFiletype::PEM)
         .unwrap();
     builder.set_certificate_chain_file("cert.pem").unwrap();
+    */
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
 	env_logger::init();
