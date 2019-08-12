@@ -10,16 +10,17 @@ const DB_VERSION:u16=0;
 //to the file such as thumbnail path
 #[derive(Clone,Serialize,Deserialize)]
 pub struct Metadata{
-    thumbnail:String,
+    pub thumbnail_name:String,
+    pub thumbnail_path:String,
     //to add stuff
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct FileData{
-    file_name: String,
-    name: String,
-    file_path:String,
-    extension:String,
-    metadata:Metadata,
+    pub file_name: String,
+    pub name: String,
+    pub file_path:String,
+    pub extension:String,
+    pub metadata:Metadata,
 }
 impl FileData{
     pub fn is_video(&self)->bool{
@@ -40,7 +41,7 @@ pub struct FileDB{
     version:u16,
 }
 fn new_metadata()->Metadata{
-    return Metadata{thumbnail:"".to_string()}
+    return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string()}
 }
 fn file_data_from_path(file_path:String)->Result<FileData,String>{
     let file_path = Path::new(&file_path);
@@ -78,9 +79,12 @@ impl FileDB{
         }
     }
     //gets mutable iterator of FileData
-    pub fn iter(&mut self)->std::slice::IterMut<'_,FileData>{
+    pub fn iter_mut(&mut self)->std::slice::IterMut<'_,FileData>{
         let iterator = self.files.iter_mut();
         return iterator;
+    }
+    pub fn iter(&self){
+        self.files.iter()
     }
     //compares to files on disk and updates internal record accordingly
     pub fn compare_disk(&mut self)->Result<String,String>{
