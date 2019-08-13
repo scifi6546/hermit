@@ -76,19 +76,12 @@ impl State{
 	}
         pub fn get_vid_path(&self,user_token:String,video_name:String)->Result<String,String>{
             if self.is_auth(user_token){
-                let res = self.video_db.get_vid_html("/videos/".to_string(),
-                    "/thumbnails/".to_string(),video_name);
+                let res = self.video_db.get_vid_path(video_name);
                 if res.is_ok(){
-                    let string:String = serde_json::to_string(&res.ok().unwrap()).unwrap();
-                    return Ok(string);
+                    return Ok(res.ok().unwrap());
                 }
                 else{
                     return Err(res.err().unwrap());
-                }
-                for vid in self.video_db.iter(){
-                    if vid.name==video_name{
-                        return Ok(vid.file_path.clone());
-                    }
                 }
                 return Err("file not found".to_string());
             }else{
@@ -573,16 +566,24 @@ pub fn video_files(data:web::Data<RwLock<State>>,session:Session,
         let token = token_res.ok().unwrap().unwrap();
         let file_path = state_data.get_vid_path(token,vid_name);
         if file_path.is_ok(){
-            let file_res = NamedFile::open(file_path.unwrap());
+            let file_path_out:String = file_path.unwrap();
+
+            println!("file path: {}",file_path_out);
+            let file_res = NamedFile::open(file_path_out);
             if file_res.is_ok(){
                 return file_res.unwrap();
             }
             else{
+                println!("file error: {}",file_res.err().unwrap());
                 return NamedFile::open("empty.txt").unwrap();
 
             }
+        }else{
+            println!("file error: {}",file_path.err().unwrap());
+            return NamedFile::open("empty.txt").unwrap();
         }
     }else{
+        println!("video error: {}",token_res.err().unwrap());
         return NamedFile::open("empty.txt").unwrap();
     }
 

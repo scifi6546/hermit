@@ -69,7 +69,7 @@ impl VideoDB{
             let mut thumbnail_name=thumbnail_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
             vec_out.push(VideoHtml{name:file.name.clone(),
-                url:url.clone(),thumbnail_url:thumbnail_base.clone(),
+                url:url.clone(),thumbnail_url:thumbnail_name,
                 html_url:url.clone()});
         }
         return vec_out;
@@ -93,7 +93,7 @@ impl VideoDB{
 
     }
     //gets the path of a video with a certain name
-    pub fn get_path(&self,name:String)->Result<String,String>{
+    pub fn get_vid_path(&self,name:String)->Result<String,String>{
         for file in self.database.iter(){
             if file.name==name{
                 return Ok(file.file_path.clone()); 
