@@ -14,7 +14,7 @@ mod users;
 #[derive(Clone)]
 pub struct State{
     pub config_file: config::Config,
-    pub video_array: Vec<videos::Video>,
+    pub video_db: videos::VideoDB,
     pub users: users::UserVec,
     pub setup_bool:bool,
     pub use_ssl:bool,//whether or not to redirect to ssl
@@ -51,34 +51,38 @@ impl State{
         let res = self.write();
         return res;
     }
-	pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
+    pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
         if self.is_auth(user_token){ 
-		    let mut out:Vec<videos::VideoHtml>=Vec::new();
-        
-		    for vid in self.video_array.clone(){
-			    out.push(vid.get_vid_html("/vid_html/".to_string(),"/thumbnails/".to_string()));	
-
-		    }
-		    return Ok(out);
+            return Ok(self.video_db.get_vid_html_vec("/vid_html/".to_string(),"/thumbnails/".to_string()));
         }
         else{
 		    return Err("not authorized".to_string());
         }
-	}
+    }
 	pub fn get_vid_html(&self,user_token:String,video_name:String)->Result<videos::VideoHtml,String>{
 		if self.users.verify_token(user_token){
-			for vid in self.video_array.clone(){
-				if vid.name==video_name{
-					return Ok(vid.get_vid_html("/videos/".to_string(),"/thumbnails/".to_string()));
-				}
-			}
-			return Err("not found".to_string());
+                    let res = self.video_db.get_vid_html("/videos/".to_string(),
+                        "/thumbnails/".to_string(),video_name);
+                    if res.is_ok(){
+                        return Ok(res.ok().unwrap());
+                    }
+                    else{
+                        return Err(res.err().unwrap());
+                    }
 		}else{
 			return Err("not authorized".to_string())
 		}
 	}
         pub fn get_vid_path(&self,user_token:String,vid_name:String)->Result<String,String>{
             if self.is_auth(user_token){
+                let res = self.video_db.get_vid_html("/videos/".to_string(),
+                    "/thumbnails/".to_string(),video_name);
+                if res.is_ok(){
+                    return Ok(res.ok().unwrap().);
+                }
+                else{
+                    return Err(res.err().unwrap());
+                }
                 for vid in self.video_array.clone(){
                     if vid.name==vid_name{
                         return Ok(vid.get_path());
@@ -104,8 +108,13 @@ impl State{
             if !res.is_ok(){
                 return Err("failed to write config".to_string());
             }
-            self.video_array=videos::get_videos(self.config_file.videos.video_path.clone(),
+            let video_res = videos::new(self.config_file.videos.video_path.clone(),
                 self.config_file.videos.thumbnails.clone(),thumb_res);
+            if video_res.is_ok(){
+                self.video_array=video_res.ok().unwrap();
+            }else{
+                return Err(video_res.err().unwrap());
+            }
             return Ok("sucess".to_string());
         }
         pub fn set_thumb_res_auth(&mut self,token:String,thumb_res:u32)->Result<String,String>{
@@ -142,8 +151,12 @@ impl State{
             self.config_file.videos.video_path=video_dir.clone();
             self.config_file.videos.thumbnails="thumbnails".to_string();
             self.config_file.thumb_res=thumb_res;
-            self.video_array=videos::get_videos(video_dir.clone(),"thumbnails".to_string(),
-                    thumb_res);
+            let video_res = videos::new(video_dir.clone(),"thumbnails".to_string(),thumb_res);
+            if video_res.is_ok(){
+                self.video_array=video_res.ok().unwrap()
+            }else{
+                return Err(video_res.err().unwrap());
+            }
             return Ok("done".to_string());
         }
         pub fn get_users(&self,token:String)->Result<Vec<UserOut>,String>{
@@ -197,7 +210,7 @@ fn init_state(startup_otions:StartupOptions)->State{
 
         let mut out=State{
             config_file: cfg.clone(),
-            video_array: videos::get_videos(vid_dir,"thumbnails".to_string(),cfg.thumb_res),
+            video_array: videos::new(vid_dir,"thumbnails".to_string(),cfg.thumb_res),
             users: users::new(),
             setup_bool: true,
             use_ssl:startup_otions.use_ssl,
