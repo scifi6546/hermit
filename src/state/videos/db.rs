@@ -252,6 +252,9 @@ pub fn new(database_path:String,file_path:String)->Result<FileDB,String>{
         return Err(res.err().unwrap());
     }
 }
+pub fn empty()->FileDB{
+    return FileDB{files:[].to_vec(),db_path:"".to_string(),file_path:"".to_string(),version:0};
+}
 fn create_new_db(database_path:String,file_path:String)->Result<FileDB,String>{
     let folder_path = Path::new(&file_path);
     let file_iterator = folder_path.read_dir();

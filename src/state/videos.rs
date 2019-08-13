@@ -47,13 +47,14 @@ pub struct VideoDB{
 }
 impl VideoDB{
     fn make_thumbnails(&mut self)->Result<String,String>{
-        for file in self.DataBase.iter_mut(){
+        for file in self.database.iter_mut(){
             //make thumbnail 
             if file.is_video(){
                 println!("todo add thumbnail");
-                let thumb = thumbnail::make_thumb(file.file_path,self.thumb_dir,self.thumb_res);
-                file.metadata.thumbnail_path=thumb[0];
-                file.metadata.thumbnail_name=thumb[1];
+                let thumb = thumbnail::make_thumb(file.file_path.clone(),
+                    self.thumb_dir.clone(),self.thumb_res.clone());
+                file.metadata.thumbnail_path=thumb[0].clone();
+                file.metadata.thumbnail_name=thumb[1].clone();
             }
         }
         return Err("todo".to_string());
@@ -62,13 +63,14 @@ impl VideoDB{
         let mut vec_out:Vec<VideoHtml>=Vec::new();
         for file in self.database.iter(){
             let name = file.name.clone();
-            let mut url = path_base;
+            let mut url = path_base.clone();
             url.push_str(&name);
 
             let mut thumbnail_name=thumbnail_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
-            vec_out.push(VideoHtml{name:file.name.clone(),url:url,thumbnail_url:thumbnail_base,
-                html_url:url});
+            vec_out.push(VideoHtml{name:file.name.clone(),
+                url:url.clone(),thumbnail_url:thumbnail_base.clone(),
+                html_url:url.clone()});
         }
         return vec_out;
     }
@@ -79,11 +81,11 @@ impl VideoDB{
 
             let name = file.name.clone();
             let mut url = path_base;
-            url.push_str(name);
+            url.push_str(&name);
 
             let mut thumbnail_name=thumbnail_base.clone();
-            thumbnail_name.push_str(file.metadata.thumbnail_name);
-            return Ok(VideoHtml{name:file.name.clone(),url:url,thumbnail_url:thumbnail_base,
+            thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
+            return Ok(VideoHtml{name:file.name.clone(),url:url.clone(),thumbnail_url:thumbnail_base,
                 html_url:url});
             }
         }
@@ -91,8 +93,13 @@ impl VideoDB{
 
     }
     //gets the path of a video with a certain name
-    pub fn get_path(&self)->Result<String,String>{
-
+    pub fn get_path(&self,name:String)->Result<String,String>{
+        for file in self.database.iter(){
+            if file.name==name{
+                return Ok(file.file_path.clone()); 
+            }
+        }
+        return Err("video not found".to_string());
     }
     pub fn iter(&self)->std::slice::Iter<'_,db::FileData>{
         return self.database.iter();
@@ -115,12 +122,15 @@ fn is_video(path_str: String)->bool{
 pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)->Result<VideoDB,String>{
     let make_db = db::new(database_path,read_dir);
     if make_db.is_ok(){
-        let mut video_db=VideoDB{database:make_db.ok().unwrap(),thumb_dir:thumb_dir};
+        let mut video_db=VideoDB{database:make_db.ok().unwrap(),thumb_dir:thumb_dir,thumb_res:thumb_res};
         video_db.make_thumbnails();
         return Ok(video_db);
     }else{
         return Err(make_db.err().unwrap());
     }
+}
+pub fn empty()->VideoDB{
+    return VideoDB{database:db::empty(),thumb_dir:"".to_string(),thumb_res:0};
 }
 //Need to delete this
 /*

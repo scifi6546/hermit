@@ -11,7 +11,7 @@ use actix_files::NamedFile;
 use tera::Tera;
 use serde::{Serialize,Deserialize};
 mod users;
-const DB_PATH:String = "db.json".to_string();
+const DB_PATH:&str = "db.json";
 #[derive(Clone)]
 pub struct State{
     pub config_file: config::Config,
@@ -111,7 +111,7 @@ impl State{
                 return Err("failed to write config".to_string());
             }
             let video_res = videos::new(self.config_file.videos.video_path.clone(),
-                self.config_file.videos.thumbnails.clone(),DB_PATH.clone(),thumb_res);
+                self.config_file.videos.thumbnails.clone(),DB_PATH.to_string(),thumb_res);
             if video_res.is_ok(){
                 self.video_db=video_res.ok().unwrap();
             }else{
@@ -154,7 +154,7 @@ impl State{
             self.config_file.videos.thumbnails="thumbnails".to_string();
             self.config_file.thumb_res=thumb_res;
             let video_res = videos::new(video_dir.clone(),"thumbnails".to_string(),
-                DB_PATH.clone(),thumb_res);
+                DB_PATH.to_string(),thumb_res);
             if video_res.is_ok(){
                 self.video_db=video_res.ok().unwrap()
             }else{
@@ -205,38 +205,42 @@ lazy_static!{
 struct StartupOptions{
     use_ssl:bool,//whether or not to redirect to https
 }
-fn init_state(startup_otions:StartupOptions)->State{
+fn init_state(startup_otions:StartupOptions)->Result<State,String>{
     let temp_cfg=config::load_config();
     if temp_cfg.is_ok(){
         let cfg = temp_cfg.ok().unwrap();
         let vid_dir=cfg.videos.video_path.clone();
-
-        let mut out=State{
-            config_file: cfg.clone(),
-            video_db: videos::new(vid_dir,"thumbnails".to_string(),
-                DB_PATH.clone(),cfg.thumb_res),
-            users: users::new(),
-            setup_bool: true,
-            use_ssl:startup_otions.use_ssl,
-        };
-        for user in cfg.users.clone(){
-            let res = out.users.load_user(user.username,user.passwd);
-            if res.is_err(){
-                println!("failed to add user");
+        let video_res = videos::new(vid_dir,"thumbnails".to_string(),
+            DB_PATH.to_string(),cfg.thumb_res);
+        if video_res.is_ok(){
+            let mut out=State{
+                config_file: cfg.clone(),
+                video_db: video_res.ok().unwrap(),
+                users: users::new(),
+                setup_bool: true,
+                use_ssl:startup_otions.use_ssl,
+            };
+            for user in cfg.users.clone(){
+                let res = out.users.load_user(user.username,user.passwd);
+                if res.is_err(){
+                    println!("failed to add user");
+                }
             }
+            return Ok(out);
+        }else{
+            return Err(video_res.err().unwrap());
         }
-
-        return out;
+    }else{
+        return Err(temp_cfg.err().unwrap());
     }
-    println!("error: {}",temp_cfg.clone().err().unwrap());
-    return empty_state(startup_otions);
+    return Err("unreachable".to_string());
 
 }
 //returns an empty state
 fn empty_state(startup_otions:StartupOptions)->State{
     return State{
         config_file: config::empty(),
-        video_db: [].to_vec(),
+        video_db: videos::empty(),
         users: users::new(),
         setup_bool: false,
         use_ssl: startup_otions.use_ssl
@@ -310,8 +314,13 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
 }
 //starts the web server, if use_ssl is true than all requests will be sent through https
 pub fn init(use_ssl:bool){
-    let mut state_struct = init_state(StartupOptions{use_ssl:use_ssl});
-    run_webserver(&mut state_struct,use_ssl);
+    let mut state_res = init_state(StartupOptions{use_ssl:use_ssl});
+    if state_res.is_ok(){
+        run_webserver(&mut state_res.ok().unwrap(),use_ssl);
+    }else{
+        let mut state = empty_state(StartupOptions{use_ssl:use_ssl});
+        run_webserver(&mut state,use_ssl);
+    }
 }
 #[derive(Deserialize)]
 struct UserReq{
