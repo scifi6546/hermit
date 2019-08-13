@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{Read,Write};
-const CONFIG_VERSION:u32=0;
+const CONFIG_VERSION:u32=1;
 #[derive(Serialize, Deserialize)]
 #[derive(Clone)]
 pub struct User{
@@ -13,7 +13,7 @@ pub struct User{
 pub struct VideoConf{
     pub video_path: String,
     pub thumbnails: String,
-    pub playlists: Vec<u8>
+    pub playlists: Vec<u8>,
 }
 #[derive(Serialize, Deserialize)]
 #[derive(Clone)]

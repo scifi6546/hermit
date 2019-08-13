@@ -83,8 +83,9 @@ impl FileDB{
         let iterator = self.files.iter_mut();
         return iterator;
     }
-    pub fn iter(&self){
-        self.files.iter()
+    pub fn iter(&self)->std::slice::Iter<'_,FileData>{
+        let iterator = self.files.iter();
+        return iterator;
     }
     //compares to files on disk and updates internal record accordingly
     pub fn compare_disk(&mut self)->Result<String,String>{

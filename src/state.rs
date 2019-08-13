@@ -11,6 +11,7 @@ use actix_files::NamedFile;
 use tera::Tera;
 use serde::{Serialize,Deserialize};
 mod users;
+const DB_PATH:String = "db.json".to_string();
 #[derive(Clone)]
 pub struct State{
     pub config_file: config::Config,
@@ -73,19 +74,20 @@ impl State{
 			return Err("not authorized".to_string())
 		}
 	}
-        pub fn get_vid_path(&self,user_token:String,vid_name:String)->Result<String,String>{
+        pub fn get_vid_path(&self,user_token:String,video_name:String)->Result<String,String>{
             if self.is_auth(user_token){
                 let res = self.video_db.get_vid_html("/videos/".to_string(),
                     "/thumbnails/".to_string(),video_name);
                 if res.is_ok(){
-                    return Ok(res.ok().unwrap().);
+                    let string:String = serde_json::to_string(&res.ok().unwrap()).unwrap();
+                    return Ok(string);
                 }
                 else{
                     return Err(res.err().unwrap());
                 }
-                for vid in self.video_array.clone(){
-                    if vid.name==vid_name{
-                        return Ok(vid.get_path());
+                for vid in self.video_db.iter(){
+                    if vid.name==video_name{
+                        return Ok(vid.file_path.clone());
                     }
                 }
                 return Err("file not found".to_string());
@@ -109,9 +111,9 @@ impl State{
                 return Err("failed to write config".to_string());
             }
             let video_res = videos::new(self.config_file.videos.video_path.clone(),
-                self.config_file.videos.thumbnails.clone(),thumb_res);
+                self.config_file.videos.thumbnails.clone(),DB_PATH.clone(),thumb_res);
             if video_res.is_ok(){
-                self.video_array=video_res.ok().unwrap();
+                self.video_db=video_res.ok().unwrap();
             }else{
                 return Err(video_res.err().unwrap());
             }
@@ -151,9 +153,10 @@ impl State{
             self.config_file.videos.video_path=video_dir.clone();
             self.config_file.videos.thumbnails="thumbnails".to_string();
             self.config_file.thumb_res=thumb_res;
-            let video_res = videos::new(video_dir.clone(),"thumbnails".to_string(),thumb_res);
+            let video_res = videos::new(video_dir.clone(),"thumbnails".to_string(),
+                DB_PATH.clone(),thumb_res);
             if video_res.is_ok(){
-                self.video_array=video_res.ok().unwrap()
+                self.video_db=video_res.ok().unwrap()
             }else{
                 return Err(video_res.err().unwrap());
             }
@@ -210,7 +213,8 @@ fn init_state(startup_otions:StartupOptions)->State{
 
         let mut out=State{
             config_file: cfg.clone(),
-            video_array: videos::new(vid_dir,"thumbnails".to_string(),cfg.thumb_res),
+            video_db: videos::new(vid_dir,"thumbnails".to_string(),
+                DB_PATH.clone(),cfg.thumb_res),
             users: users::new(),
             setup_bool: true,
             use_ssl:startup_otions.use_ssl,
@@ -232,7 +236,7 @@ fn init_state(startup_otions:StartupOptions)->State{
 fn empty_state(startup_otions:StartupOptions)->State{
     return State{
         config_file: config::empty(),
-        video_array: [].to_vec(),
+        video_db: [].to_vec(),
         users: users::new(),
         setup_bool: false,
         use_ssl: startup_otions.use_ssl
