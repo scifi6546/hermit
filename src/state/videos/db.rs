@@ -12,6 +12,7 @@ const DB_VERSION:u16=0;
 pub struct Metadata{
     pub thumbnail_name:String,
     pub thumbnail_path:String,
+    pub thumbnail_res:u32,
     //to add stuff
 }
 #[derive(Clone,Serialize,Deserialize)]
@@ -41,7 +42,7 @@ pub struct FileDB{
     version:u16,
 }
 fn new_metadata()->Metadata{
-    return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string()}
+    return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string(),thumbnail_res:0}
 }
 fn file_data_from_path(file_path:String)->Result<FileData,String>{
     let file_path = Path::new(&file_path);

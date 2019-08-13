@@ -13,31 +13,6 @@ pub struct VideoHtml{
     pub thumbnail_url: String,
     pub html_url:String,
 }
-/*
-impl Video{
-    pub fn get_url(&self,path_base:String)->String{
-        let mut out = path_base.clone();
-        out.push_str(&self.name.clone());
-        return out;
-    }
-    pub fn get_thumb(&self,thumbnail_base: String)->String{
-        let mut out:String = thumbnail_base.clone();
-        out.push_str(&self.thumbnail_name.clone());
-        return out;
-    }
-    pub fn get_path(&self)->String{
-        return self.path.clone();
-    }
-
-    pub fn get_vid_html(&self,path_base:String,thumbnail_base:String)->VideoHtml{
-        return VideoHtml{
-            name:self.name.clone(),
-            url:self.get_url(path_base.clone()),
-            thumbnail_url: self.get_thumb(thumbnail_base),
-			html_url:self.get_url(path_base),
-        };
-    }
-}*/
 #[derive(Clone)]
 pub struct VideoDB{
     database: db::FileDB,
@@ -49,11 +24,10 @@ impl VideoDB{
         for file in self.database.iter_mut(){
             //make thumbnail 
             if file.is_video(){
-                println!("todo add thumbnail");
                 let thumb = thumbnail::make_thumb(file.file_path.clone(),
                     self.thumb_dir.clone(),self.thumb_res.clone());
-                file.metadata.thumbnail_path=thumb[0].clone();
-                file.metadata.thumbnail_name=thumb[1].clone();
+                file.metadata=db::Metadata{thumbnail_path:thumb.path,thumbnail_name:thumb.name,thumbnail_res:thumb.resolution};
+                
             }
         }
         return Ok("sucessfully made thumbnails".to_string());
@@ -137,75 +111,3 @@ pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)-
 pub fn empty()->VideoDB{
     return VideoDB{database:db::empty(),thumb_dir:"".to_string(),thumb_res:0};
 }
-//Need to delete this
-/*
-pub fn get_videos(read_dir:String,thumb_dir:String,thumb_res:u32)->Vec<Video>{
-    let path=Path::new(&read_dir);
-    let thumb_path=Path::new(&thumb_dir);
-    assert!(path.is_dir());
-    assert!(thumb_path.is_dir());
-
-    println!("looking for videos");
-    let path=Path::new(&read_dir);
-    let mut out_vid:Vec<Video>=Vec::new();
-    //Todo make thumbnail creation run in parallel
-    let mut threads = Vec::new();    
-    let mutex_videos=Mutex::new(Vec::new());
-    let arc_videos=Arc::new(mutex_videos);
-    for entry in fs::read_dir(path).unwrap(){
-        let entry = entry.unwrap();
-        //let foo = channel();
-        //foo.bar();
-        let path_str:String = entry.path().to_str().unwrap().to_string();
-        if is_video(path_str){
-            let mut arc_vec = Arc::clone(&arc_videos);
-            let read_dir_arc = Arc::new(RwLock::new(read_dir.clone()));
-            let thumb_dir_arc = Arc::new(RwLock::new(thumb_dir.clone()));
-            let mut read_dir_arc_c = Arc::clone(&read_dir_arc);
-            let mut thumb_dir_arc_c = Arc::clone(&thumb_dir_arc);
-            threads.push(thread::spawn(move || {
-                let temp = read_dir_arc_c.read();
-                let read_dir_temp = (*read_dir_arc_c.read().unwrap()).clone();
-                let thumb_dir_temp = (*thumb_dir_arc_c.read().unwrap()).clone();
-                let vid = make_thumbnail(entry,read_dir_temp,thumb_dir_temp,thumb_res);
-                let mut vid_vec = &mut arc_vec.lock().unwrap();
-                vid_vec.push(vid);
-            }));
-
-        }
-
-        println!("file found");
-    }
-    for thread_single in threads{
-        thread_single.join();
-    }
-    
-    let mut arc_vec = Arc::clone(&arc_videos);
-    out_vid=arc_vec.lock().unwrap().clone();
-
-    print_videos(out_vid.clone());
-    return out_vid;
-}
-fn make_thumbnail(video_entry: std::fs::DirEntry, vid_dir:String,thumb_dir:String,resolution:u32)->Video{
-    let vid_path_temp:&Path=Path::new(vid_dir.as_str());
-    let vid_path = vid_path_temp.join(video_entry.file_name().to_str().unwrap());
-    let thumb_info = thumbnail::make_thumb(vid_path.to_str().unwrap().to_string(),
-        thumb_dir.clone(),resolution).clone();
-    let mut vid = Video{path:"".to_string(),
-        name:"".to_string(),
-        thumbnail_path: thumb_info[0].clone(), 
-        thumbnail_name: thumb_info[1].clone(),
-        };
-    vid.path=video_entry.path().to_str().unwrap().to_string();
-    vid.name=video_entry.path().file_name().unwrap().to_str().unwrap().to_string();
-    return vid
-}
-fn print_videos(videos:Vec<Video>){
-    for vid in videos{
-        println!("Videos: ");
-        println!("  name: {}",vid.name);
-        println!("  path: {}",vid.path);
-        println!("  thumbnail: {}",vid.thumbnail_path);
-    }
-}
-*/
