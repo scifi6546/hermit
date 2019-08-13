@@ -48,7 +48,10 @@ impl State{
         return Err("not authorized".to_string());
     }
     fn _add_user(&mut self, username:String,password:String)->Result<String,String>{
-        self.users.add_user(username,password);
+        let user_res = self.users.add_user(username,password);
+        if user_res.is_err(){
+            return Err(user_res.err().unwrap());
+        }
         let res = self.write();
         return res;
     }
@@ -83,7 +86,6 @@ impl State{
                 else{
                     return Err(res.err().unwrap());
                 }
-                return Err("file not found".to_string());
             }else{
                 return Err("not authorized".to_string());
             }
@@ -226,8 +228,6 @@ fn init_state(startup_otions:StartupOptions)->Result<State,String>{
     }else{
         return Err(temp_cfg.err().unwrap());
     }
-    return Err("unreachable".to_string());
-
 }
 //returns an empty state
 fn empty_state(startup_otions:StartupOptions)->State{
@@ -242,14 +242,13 @@ fn empty_state(startup_otions:StartupOptions)->State{
 fn make_ssl_key(){
     if !Path::new("key.pem").exists() || !Path::new("cert.pem").exists(){
         println!("making ssl");
-        let res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
+        let _res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
             .arg("-nodes").arg("-keyout").arg("key.pem").arg("-out").arg("cert.pem")
             .arg("-days").arg("365").arg("-subj").arg("/CN=localhost").output();
         println!("done with ssl");
     }
 }
 pub fn run_webserver(state_in:&mut State,use_ssl:bool){
-    let video_dir = state_in.get_vid_dir();
     let thumb_dir= state_in.get_thumb_dir();
     let temp_state = RwLock::new(state_in.clone());
     let shared_state = web::Data::new(temp_state);
@@ -307,7 +306,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
 }
 //starts the web server, if use_ssl is true than all requests will be sent through https
 pub fn init(use_ssl:bool){
-    let mut state_res = init_state(StartupOptions{use_ssl:use_ssl});
+    let state_res = init_state(StartupOptions{use_ssl:use_ssl});
     if state_res.is_ok(){
         run_webserver(&mut state_res.ok().unwrap(),use_ssl);
     }else{
@@ -428,7 +427,7 @@ pub fn index(data:web::Data<RwLock<State>>, session:Session)->impl Responder{
     HttpResponse::Ok().body("".to_string())
         
 }
-pub fn setup(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+pub fn setup(data:web::Data<RwLock<State>>)->impl Responder{
         let render_data = TERA.render("setup.jinja2",&EmptyStruct{}); 
         let state = data.read();
         if render_data.is_ok() && !state.unwrap().is_setup(){
@@ -493,7 +492,7 @@ struct SetupStruct{
     thumb_res:u32,
 }
 fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
-             session:Session)->Result<String>{
+             _session:Session)->Result<String>{
     let mut state_data = data.write().unwrap();
     let res =  state_data.setup(info.video_dir.clone(),info.username.clone(),info.password.clone(),info.thumb_res);
     if res.is_ok(){
@@ -502,7 +501,7 @@ fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
         return Ok(res.err().unwrap());
     }
 }
-fn logout_api(into: web::Json<EmptyStruct>,session:Session,data:web::Data<RwLock<State>>)->Result<String>{
+fn logout_api(session:Session,data:web::Data<RwLock<State>>)->Result<String>{
     let mut state_data=data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok(){
@@ -523,7 +522,6 @@ struct EmptyStruct{
 }
 pub fn login_html(data:web::Data<RwLock<State>>, session:Session) -> impl Responder{
     println!("ran redirect");
-    let state_data = data.read().unwrap();
     let html = TERA.render("login.jinja2",&EmptyStruct{});
     if html.is_ok(){
         return HttpResponse::Ok().body(html.unwrap());
@@ -587,5 +585,4 @@ pub fn video_files(data:web::Data<RwLock<State>>,session:Session,
         return NamedFile::open("empty.txt").unwrap();
     }
 
-        return NamedFile::open("empty.txt").unwrap();
 }

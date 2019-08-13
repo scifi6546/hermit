@@ -1,4 +1,3 @@
-use std::fs::{self};
 use serde::{Deserialize,Serialize};
 use std::path::Path;
 use std::thread;
@@ -57,7 +56,7 @@ impl VideoDB{
                 file.metadata.thumbnail_name=thumb[1].clone();
             }
         }
-        return Err("todo".to_string());
+        return Ok("sucessfully made thumbnails".to_string());
     }
     pub fn get_vid_html_vec(&self,path_base:String,thumbnail_base:String)->Vec<VideoHtml>{
         let mut vec_out:Vec<VideoHtml>=Vec::new();
@@ -125,8 +124,12 @@ pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)-
     let make_db = db::new(database_path,read_dir);
     if make_db.is_ok(){
         let mut video_db=VideoDB{database:make_db.ok().unwrap(),thumb_dir:thumb_dir,thumb_res:thumb_res};
-        video_db.make_thumbnails();
-        return Ok(video_db);
+        let thumb_res = video_db.make_thumbnails();
+        if thumb_res.is_ok(){
+            return Ok(video_db);
+        }else{
+            return Err(thumb_res.err().unwrap());
+        }
     }else{
         return Err(make_db.err().unwrap());
     }
