@@ -501,7 +501,7 @@ fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
     let mut state_data = data.write().unwrap();
     let res =  state_data.setup(info.video_dir.clone(),info.username.clone(),info.password.clone(),info.thumb_res);
     if res.is_ok(){
-        return Ok("Sucess".to_string());
+        return Ok("success".to_string());
     }else{
         return Ok(res.err().unwrap());
     }
