@@ -3,6 +3,13 @@
 	display: block;
 	padding: 15px;
 }
+.error{
+	background-color:#72707e;
+	padding:10px;
+	border-radius: 5px;
+	margin: 5px;
+	color:#950202;
+}
 video{
 	width: 100%;
 }

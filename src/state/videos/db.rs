@@ -281,7 +281,7 @@ fn create_new_db(database_path:String,file_path:String)->Result<FileDB,String>{
         }
         return Ok(FileDB{files:files,db_path:database_path,file_path:file_path,version:DB_VERSION});
     }else{
-        return Err("Folder not found".to_string());
+        return Err("db.rs: Folder not found".to_string());
     }
 }
 fn reload_databse(database_path:String)->Result<FileDB,String>{
