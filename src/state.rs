@@ -139,7 +139,12 @@ impl State{
                 self.setup_bool=true;
                 return Ok("Sucess".to_string());
             }else{
-                return Err("failed to add user".to_string());
+                if reload_res.is_err(){
+                    return Err(reload_res.err().unwrap());
+                }
+                else{
+                    return Err(add_user_res.err().unwrap());
+                }
             }
 
         }
