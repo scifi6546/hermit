@@ -87,7 +87,7 @@ impl FileDB{
             return Err("failed to create output string".to_string());
         }
     }
-    pub fn getPlaylists(&self)->Vec<Playlist>{
+    pub fn get_playlist_all(&self)->Vec<Playlist>{
         return self.playlist.clone();
     }
     pub fn getPlaylist(&self,name:String)->Result<Playlist,String>{
@@ -111,7 +111,7 @@ impl FileDB{
         return false;
     }
     //makes a playlist
-    pub fn makePlaylist(&mut self,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+    pub fn add_playlist(&mut self,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
         for play in self.playlist.clone(){
             if play.name==playlist_name{
                 return Err(format!("playlist with name {} already exists!",playlist_name));
