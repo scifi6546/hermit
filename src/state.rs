@@ -77,6 +77,19 @@ impl State{
 			return Err("not authorized".to_string())
 		}
 	}
+        pub fn add_playlist(&mut self,user_token:String,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+            if self.is_auth(user_token){
+                return self.video_db.add_playlist(playlist_name,video_paths);
+            }
+            return Err("not authorized".to_string());
+        }
+        pub fn get_playlist_all(&self,user_token:String)->Result<Vec<videos::HtmlPlaylist>,String>{
+            if self.is_auth(user_token){
+                return Ok(self.video_db.get_playlist_all());
+            }else{
+                return Err("not authorized".to_string());
+            }
+        }
         pub fn get_vid_path(&self,user_token:String,video_name:String)->Result<String,String>{
             if self.is_auth(user_token){
                 let res = self.video_db.get_vid_path(video_name);
@@ -282,6 +295,8 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/setup",web::post().to(api_setup))
             .route("/api/logout",web::post().to(logout_api))
             .route("/api/settings",web::post().to(settings_api))
+            .route("/api/add_playlist",web::post().to(add_playlist_api))
+            .route("/api/get_playlist_all",web::get().to(get_playlist_api))
             .route("/videos/{video_name}",web::get().to(video_files))
             .service(actix_files::Files::new("/static","./static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
@@ -499,6 +514,49 @@ fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
         return Ok("Sucess".to_string());
     }else{
         return Ok(res.err().unwrap());
+    }
+}
+#[derive(Serialize,Deserialize)]
+struct AddPlaylist{
+    name:String,//name of playlist
+    videos:Vec<String>,//vec with video path names
+}
+fn add_playlist_api(info:web::Json<AddPlaylist>,data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    let mut state_data = data.write().unwrap();
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let res = state_data.add_playlist(token,info.name.clone(),info.videos.clone());
+        if res.is_ok(){
+            return Ok("success".to_string());
+        }else{
+            return Ok(res.err().unwrap());
+        }
+    }else{
+        return Ok("not authorized".to_string());
+    }
+    
+}
+fn get_playlist_api(data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+
+    let mut state_data = data.write().unwrap();
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let playlist_res = state_data.get_playlist_all(token);
+        if playlist_res.is_ok(){
+            let out_str_res = serde_json::to_string(&playlist_res.ok().unwrap());
+            if out_str_res.is_ok(){
+                return Ok(out_str_res.ok().unwrap());
+            }else{
+                return Ok(out_str_res.err().unwrap().to_string());
+            }
+            
+        }else{
+            return Ok(playlist_res.err().unwrap());
+        }
+    }else{
+        return Ok("not authorized".to_string());
     }
 }
 fn logout_api(session:Session,data:web::Data<RwLock<State>>)->Result<String>{

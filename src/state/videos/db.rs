@@ -34,12 +34,20 @@ impl FileData{
         }
     }
 }
+
+//a playlist database
+#[derive(Clone,Serialize,Deserialize)]
+pub struct Playlist{
+    pub video_paths:Vec<String>,//paths of all videos, path is a unique identifier
+    pub name:String,//name of playlist
+}
 #[derive(Clone,Serialize,Deserialize)]
 pub struct FileDB{
     files:Vec<FileData>,
     db_path:String,
     file_path:String,
     version:u16,
+    playlist:Vec<Playlist>,
 }
 fn new_metadata()->Metadata{
     return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string(),thumbnail_res:0}
@@ -78,6 +86,44 @@ impl FileDB{
         }else{
             return Err("failed to create output string".to_string());
         }
+    }
+    pub fn get_playlist_all(&self)->Vec<Playlist>{
+        return self.playlist.clone();
+    }
+    pub fn getPlaylist(&self,name:String)->Result<Playlist,String>{
+        for play in self.playlist.clone(){
+            if play.name==name{
+                return Ok(play.clone());
+            }
+        }
+        let out = format!("db.rs: playlist {} not found",name);
+        return Err(out);
+    }
+    //checks if the path is real and if the file is actually a video
+    fn is_video(&self,video_path:String)->bool{
+        for entry in self.iter(){
+            if entry.file_path==video_path{
+                if entry.is_video(){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    //makes a playlist
+    pub fn add_playlist(&mut self,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+        for play in self.playlist.clone(){
+            if play.name==playlist_name{
+                return Err(format!("playlist with name {} already exists!",playlist_name));
+            }
+        }
+        for vid in video_paths.clone(){
+            if !self.is_video(vid.clone()){
+                return Err(format!("vid with path {} does not exist",vid));
+            }
+        }
+        self.playlist.push(Playlist{name:playlist_name,video_paths:video_paths});
+        return Ok("sucess".to_string());
     }
     //gets mutable iterator of FileData
     pub fn iter_mut(&mut self)->std::slice::IterMut<'_,FileData>{
@@ -254,7 +300,8 @@ pub fn new(database_path:String,file_path:String)->Result<FileDB,String>{
     }
 }
 pub fn empty()->FileDB{
-    return FileDB{files:[].to_vec(),db_path:"".to_string(),file_path:"".to_string(),version:0};
+    return FileDB{files:[].to_vec(),db_path:"".to_string(),file_path:"".to_string(),version:0,
+        playlist:[].to_vec()};
 }
 fn create_new_db(database_path:String,file_path:String)->Result<FileDB,String>{
     let folder_path = Path::new(&file_path);
@@ -280,7 +327,8 @@ fn create_new_db(database_path:String,file_path:String)->Result<FileDB,String>{
                 );
             }
         }
-        return Ok(FileDB{files:files,db_path:database_path,file_path:file_path,version:DB_VERSION});
+        return Ok(FileDB{files:files,db_path:database_path,file_path:file_path,version:DB_VERSION,
+            playlist:[].to_vec()});
     }else{
         return Err("Folder not found".to_string());
     }

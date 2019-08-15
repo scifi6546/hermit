@@ -34,11 +34,11 @@ $(document).ready(function(){
 	$("#submit_playlist").on('click',function(){
 		name=$("#set_playlist_name")[0].value;
 		console.log(name);
-		temp_data={action:"make_playlist",playlist_name:name,videos:clicked_buttons}
+		temp_data={name:name,videos:clicked_buttons}
 		console.log(temp_data)
 		temp_json=JSON.stringify(temp_data);
 		console.log(temp_json);
-		$.ajax({method:"POST",url:"/api/playlist_post",data:temp_json})
+		$.ajax({method:"POST",url:"/api/add_playlist",data:temp_json})
 	});
 	$(".make_playlist").slideUp(0);
 

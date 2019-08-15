@@ -12,12 +12,18 @@ pub struct VideoHtml{
     pub url: String,
     pub thumbnail_url: String,
     pub html_url:String,
+    pub path:String,
 }
 #[derive(Clone)]
 pub struct VideoDB{
     database: db::FileDB,
     thumb_dir:String,
     thumb_res:u32,
+}
+#[derive(Clone,Serialize,Deserialize)]
+pub struct HtmlPlaylist{
+    pub video_paths:Vec<String>,//paths of all videos, path is a unique identifier
+    pub name:String,//name of playlist
 }
 impl VideoDB{
     fn make_thumbnails(&mut self)->Result<String,String>{
@@ -44,7 +50,7 @@ impl VideoDB{
                 thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
                 vec_out.push(VideoHtml{name:file.name.clone(),
                     url:url.clone(),thumbnail_url:thumbnail_name,
-                    html_url:url.clone()});
+                    html_url:url.clone(),path:file.file_path.clone()});
             }
         }
         return vec_out;
@@ -61,11 +67,23 @@ impl VideoDB{
             let mut thumbnail_name=thumbnail_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
             return Ok(VideoHtml{name:file.name.clone(),url:url.clone(),thumbnail_url:thumbnail_base,
-                html_url:url});
+                html_url:url,path:file.file_path.clone()});
             }
         }
         return Err("video not found".to_string());
 
+    }
+    pub fn add_playlist(&mut self, playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+        return self.database.add_playlist(playlist_name,video_paths);
+    }
+    pub fn get_playlist_all(&self)->Vec<HtmlPlaylist>{
+        let temp_play = self.database.get_playlist_all();
+        let mut out_vec = Vec::new();
+        out_vec.reserve(temp_play.len());
+        for play in temp_play{
+            out_vec.push(HtmlPlaylist{name:play.name,video_paths:play.video_paths})
+        }
+        return out_vec;
     }
     //gets the path of a video with a certain name
     pub fn get_vid_path(&self,name:String)->Result<String,String>{
