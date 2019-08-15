@@ -78,13 +78,13 @@ impl FileDB{
                 if write_res.is_ok(){
                     return Ok("sucess".to_string());
                 }else{
-                    return Err("failed to write to file".to_string());
+                    return Err("db.rs: failed to write to file".to_string());
                 }
             }else{
-                return Err("failed to open file".to_string());
+                return Err("db.rs: failed to open database file".to_string());
             }
         }else{
-            return Err("failed to create output string".to_string());
+            return Err("db.rs: failed to create output database file".to_string());
         }
     }
     pub fn get_playlist_all(&self)->Vec<Playlist>{
@@ -281,7 +281,12 @@ pub fn new(database_path:String,file_path:String)->Result<FileDB,String>{
         if res.is_ok(){
             database = res.ok().unwrap();
         }else{
-            return res;
+            let res =  create_new_db(database_path.clone(),file_path.clone());
+            if res.is_ok(){
+                database=res.ok().unwrap();
+            }else{
+                return res;
+            }
         }
     }else{
         let res =  create_new_db(database_path.clone(),file_path.clone());
@@ -330,7 +335,7 @@ fn create_new_db(database_path:String,file_path:String)->Result<FileDB,String>{
         return Ok(FileDB{files:files,db_path:database_path,file_path:file_path,version:DB_VERSION,
             playlist:[].to_vec()});
     }else{
-        return Err("Folder not found".to_string());
+        return Err("db.rs: Folder not found".to_string());
     }
 }
 fn reload_databse(database_path:String)->Result<FileDB,String>{

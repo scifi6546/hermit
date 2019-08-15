@@ -152,7 +152,12 @@ impl State{
                 self.setup_bool=true;
                 return Ok("Sucess".to_string());
             }else{
-                return Err("failed to add user".to_string());
+                if reload_res.is_err(){
+                    return Err(reload_res.err().unwrap());
+                }
+                else{
+                    return Err(add_user_res.err().unwrap());
+                }
             }
 
         }
@@ -511,7 +516,7 @@ fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
     let mut state_data = data.write().unwrap();
     let res =  state_data.setup(info.video_dir.clone(),info.username.clone(),info.password.clone(),info.thumb_res);
     if res.is_ok(){
-        return Ok("Sucess".to_string());
+        return Ok("success".to_string());
     }else{
         return Ok(res.err().unwrap());
     }
