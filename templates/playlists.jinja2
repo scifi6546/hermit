@@ -13,5 +13,16 @@
 <div class="body">
 </div>
 <script>
+let playlist_div=
+	"<div class=playlist><img src='{THUMB_URL}'class=thumbnail/>{PLAYLIST_NAME}</div>";
+$.ajax({url:"/api/get_playlist_all",type:"GET",complete:function(input){
+	console.log(input);
+	let plays = JSON.parse(input.responseText);
+	for(i in plays){
+		let temp_str = playlist_div.replace(/{PLAYLIST_NAME}/gi,plays[i].name);
+		console.log(plays[i]);
 
+		$(".body").append(temp_str);
+	}
+}});
 </script>

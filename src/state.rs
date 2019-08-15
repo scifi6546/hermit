@@ -297,6 +297,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/", web::get().to(index))
             .route("/login",web::get().to(login_html))
             .route("/setup",web::get().to(setup))
+            .route("/playlists",web::get().to(playlists))
             .route("/api/setup",web::post().to(api_setup))
             .route("/api/logout",web::post().to(logout_api))
             .route("/api/settings",web::post().to(settings_api))
@@ -462,6 +463,22 @@ pub fn settings(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
     if token_res.is_ok(){
         let state = data.read();
         if render_data.is_ok() && state.unwrap().is_auth(token_res.unwrap().unwrap()){
+            return HttpResponse::Ok().body(render_data.unwrap());
+        }else{
+            return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
+        }
+    }else{
+        return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
+    }
+}
+pub fn playlists(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+
+    let render_data=TERA.render("playlists.jinja2",&EmptyStruct{});
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let state = data.read();
+        if render_data.is_ok() && state.unwrap().is_auth(token_res.unwrap().unwrap()){
+            println!("rendered playlists");
             return HttpResponse::Ok().body(render_data.unwrap());
         }else{
             return HttpResponse::TemporaryRedirect().header("Location","/login").finish();

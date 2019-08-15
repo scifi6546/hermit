@@ -123,7 +123,12 @@ impl FileDB{
             }
         }
         self.playlist.push(Playlist{name:playlist_name,video_paths:video_paths});
-        return Ok("sucess".to_string());
+        let res = self.write();
+        if res.is_ok(){
+            return Ok("success".to_string());
+        }else{
+            return Err(res.err().unwrap());
+        }
     }
     //gets mutable iterator of FileData
     pub fn iter_mut(&mut self)->std::slice::IterMut<'_,FileData>{
