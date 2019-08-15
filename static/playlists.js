@@ -38,7 +38,9 @@ $(document).ready(function(){
 		console.log(temp_data)
 		temp_json=JSON.stringify(temp_data);
 		console.log(temp_json);
-		$.ajax({method:"POST",url:"/api/add_playlist",data:temp_json})
+		$.ajax({url:"/api/add_playlist",type:"POST",data:temp_json,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:function(input){
+			console.log(input);
+		}});
 	});
 	$(".make_playlist").slideUp(0);
 
