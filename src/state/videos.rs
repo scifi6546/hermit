@@ -66,12 +66,27 @@ impl VideoDB{
 
             let mut thumbnail_name=thumbnail_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
-            return Ok(VideoHtml{name:file.name.clone(),url:url.clone(),thumbnail_url:thumbnail_base,
+            return Ok(VideoHtml{name:file.name.clone(),url:url.clone(),thumbnail_url:thumbnail_name,
                 html_url:url,path:file.file_path.clone()});
             }
         }
         return Err("video not found".to_string());
 
+    }
+    pub fn get_vid_html_from_path(&self,path_base:String,
+        thumbnail_base:String,vid_path:String)->Result<VideoHtml,String>{
+        let res = self.database.get_file_from_path(vid_path);
+        if res.is_ok(){
+            let file = res.ok().unwrap();
+            let mut thumbnail_name=thumbnail_base.clone();
+            let mut url = path_base.clone();
+            thumbnail_name.push_str(&file.metadata.thumbnail_name);
+            url.push_str(&file.name);
+            return Ok(VideoHtml{name:file.name,url:url.clone(),thumbnail_url:thumbnail_name,html_url:url,path:file.file_path.clone()});
+
+        }else{
+            return Err(res.err().unwrap());
+        }
     }
     pub fn add_playlist(&mut self, playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
         return self.database.add_playlist(playlist_name,video_paths);

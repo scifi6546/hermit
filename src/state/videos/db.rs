@@ -139,6 +139,14 @@ impl FileDB{
         let iterator = self.files.iter();
         return iterator;
     }
+    pub fn get_file_from_path(&self,path:String)->Result<FileData,String>{
+        for file in self.iter(){
+            if file.file_path==path{
+                return Ok(file.clone());
+            }
+        }
+        return Err(format!("db.rs: file path {} not found",path));
+    }
     //compares to files on disk and updates internal record accordingly
     pub fn compare_disk(&mut self)->Result<String,String>{
         self.sort_by_filename();

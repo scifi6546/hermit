@@ -77,6 +77,14 @@ impl State{
 			return Err("not authorized".to_string())
 		}
 	}
+        pub fn get_vid_html_from_path(&self, user_token:String,video_path:String)->Result<videos::VideoHtml,String>{
+            if self.is_auth(user_token){
+
+                return self.video_db.get_vid_html_from_path("/videos/".to_string(),"/thumbnails/".to_string(),video_path)
+            }else{
+                return Err("not authorized".to_string());
+            }
+        }
         pub fn add_playlist(&mut self,user_token:String,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
             if self.is_auth(user_token){
                 return self.video_db.add_playlist(playlist_name,video_paths);
@@ -303,6 +311,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/settings",web::post().to(settings_api))
             .route("/api/add_playlist",web::post().to(add_playlist_api))
             .route("/api/get_playlist_all",web::get().to(get_playlist_api))
+            .route("/api/get_video",web::post().to(get_video))
             .route("/videos/{video_name}",web::get().to(video_files))
             .service(actix_files::Files::new("/static","./static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
@@ -377,6 +386,30 @@ fn add_user(info:web::Json<UserReq>,data:web::Data<RwLock<State>>,session:Sessio
 #[derive(Serialize)]
 pub struct UsersApi{
     users:Vec<UserOut>
+}
+
+#[derive(Deserialize,Serialize)]
+pub struct GetVideo{
+    video_path:String
+}
+pub fn get_video(info:web::Json<GetVideo>,
+                 data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let state = data.read().unwrap();
+        let token = token_res.unwrap().unwrap();
+        let video_res = state.get_vid_html_from_path(token,info.video_path.clone());
+        if video_res.is_ok(){
+            let video = video_res.ok().unwrap();
+            let parsed_string = serde_json::to_string(&video).ok().unwrap();
+            return Ok(parsed_string);
+        }else{
+            return Ok(video_res.err().unwrap());
+        }
+    }else{
+        return Ok("token not found".to_string());
+    }
+
 }
 pub fn get_users(data: web::Data<RwLock<State>>,session:Session)->impl Responder{
     let token = session.get("token");
