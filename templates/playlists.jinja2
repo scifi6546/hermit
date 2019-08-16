@@ -26,9 +26,27 @@ var playlist_play =
 	"</div>"
 var playlist_div=
 	"<div class=playlist id={PLAYLIST_NAME}><img src='{THUMB_URL}'class=thumbnail/>{PLAYLIST_NAME}</div>";
+//index in playlist_videos of current video
+var CURRENT_VIDEO_INDEX=0;
+var LAST_VOLUME=1;
 //sets the video to clicked on one
+function play_next_video(event_in){
+	if(CURRENT_VIDEO_INDEX+1<playlist_videos.length){
+	
+		CURRENT_VIDEO_INDEX+=1;
+	}else{
+		CURRENT_VIDEO_INDEX=0;
+	}
+
+	$(".playlist_video_src")[0].src=playlist_videos[CURRENT_VIDEO_INDEX].url;
+	$(".playlist_video")[0].load();
+	$(".playlist_video")[0].play();
+	$(".playlist_video")[0].volume=LAST_VOLUME;
+}
 function set_video(input){
 	console.log(this);
+	//getting index set in setup_playlist_preview_div
+	CURRENT_VIDEO_INDEX=this.index;
 	$(".playlist_video_src")[0].src=this.video.url;
 	$(".playlist_video")[0].load();
 	$(".playlist_video")[0].play();
@@ -44,10 +62,11 @@ function setup_playlist_preview_div(ajax){
 	$(".video_preview_div").append(preview_str);
 	let children = $(".video_preview_div").children();
 	let preview_div = ""
-
+	let video_index = 0;	
 	for( i in children){
 		if(children[i].id==data.path){
 			preview_div=children[i]
+			video_index=i;
 		}
 	}
 	//setting video obj to preview div
@@ -57,6 +76,7 @@ function setup_playlist_preview_div(ajax){
 	playlist_videos.push(data);
 	console.log("preview div");
 	console.log(preview_div);
+	preview_div.index=video_index;
 	preview_div.onclick=set_video;
 }
 //array containing all video objects
@@ -84,6 +104,14 @@ function add_playlist_html(ajax_response){
 		console.log(this.video.url);
 		play_str = play_str.replace(/{VIDEO_URL}/gi,this.video.url);
 		$(".body").append(play_str);
+
+		//setting up autoplay for video
+		$(".playlist_video")[0].onended=play_next_video;
+		//settingup volume
+
+		$(".playlist_video")[0].onvolumechange=function(){
+			LAST_VOLUME=$(".playlist_video")[0].volume;
+		};
 		console.log($(".playlist_video")[0]);
 		for(i in this.playlist.video_paths){
 			let get_json = {video_path:this.playlist.video_paths[i]}
