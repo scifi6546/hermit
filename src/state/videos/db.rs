@@ -5,7 +5,12 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 const DB_VERSION:u16=0;
 
-
+#[derive(Clone,Serialize,Deserialize)]
+pub struct VideoData{
+    pub star_rating:u32,//star rating (eg 5 or 4 stars)
+    pub rating:String,//normal rating (eg pg, pg13)
+    pub description:String,//Dexcription Of video
+}
 //Metadata struct is used to store data not directly related
 //to the file such as thumbnail path
 #[derive(Clone,Serialize,Deserialize)]
@@ -13,6 +18,7 @@ pub struct Metadata{
     pub thumbnail_name:String,
     pub thumbnail_path:String,
     pub thumbnail_res:u32,
+    pub video_data:VideoData,
     //to add stuff
 }
 #[derive(Clone,Serialize,Deserialize)]
@@ -50,7 +56,12 @@ pub struct FileDB{
     playlist:Vec<Playlist>,
 }
 fn new_metadata()->Metadata{
-    return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string(),thumbnail_res:0}
+    return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string(),
+        thumbnail_res:0,video_data:VideoData{
+            star_rating:0,
+            rating: "".to_string(),
+            description:"".to_string(),
+        }}
 }
 fn file_data_from_path(file_path:String)->Result<FileData,String>{
     let file_path = Path::new(&file_path);

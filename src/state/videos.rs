@@ -32,7 +32,12 @@ impl VideoDB{
             if file.is_video(){
                 let thumb = thumbnail::make_thumb(file.file_path.clone(),
                     self.thumb_dir.clone(),self.thumb_res.clone());
-                file.metadata=db::Metadata{thumbnail_path:thumb.path,thumbnail_name:thumb.name,thumbnail_res:thumb.resolution};
+                    file.metadata=db::Metadata{thumbnail_path:thumb.path,thumbnail_name:thumb.name,
+                        thumbnail_res:thumb.resolution,video_data:db::VideoData{
+                        star_rating:0,
+                        rating: "".to_string(),
+                        description:"".to_string(),
+                    }};
                 
             }
         }

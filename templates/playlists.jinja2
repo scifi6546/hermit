@@ -14,7 +14,7 @@
 </div>
 <script>
 var playlist_play = 
-	"<div class=playlist_play id={PLAYLIST_NAME}>"+
+	"<div class=playlist_div id={PLAYLIST_NAME}>"+
 		"<div class=video_div>"+
 			"<video controls class=playlist_video>"+
 				"<source class=playlist_video_src src='{VIDEO_URL}'/>"+
@@ -118,6 +118,8 @@ function add_playlist_html(ajax_response){
 			let data_str = JSON.stringify(get_json);
 			$.ajax({url:"/api/get_video",type:"POST",data:data_str,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:setup_playlist_preview_div});
 		}
+		//changing class of body div to override css-grid
+		$(".body")[0].className="body_no_grid";
 	}
 }
 $.ajax({url:"/api/get_playlist_all",type:"GET",complete:function(input){
