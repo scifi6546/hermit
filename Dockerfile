@@ -12,4 +12,4 @@ COPY ./static ./static
 COPY ./templates ./templates
 RUN mkdir thumbnails
 RUN ls -alh
-CMD ["hermit-rust","-ssl","no"]
+CMD ["hermit-rust"]
