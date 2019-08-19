@@ -14,6 +14,12 @@ pub struct VideoHtml{
     pub html_url:String,
     pub path:String,
 }
+#[derive(Clone,Serialize,Deserialize)]
+pub struct VideoRatingData{
+    pub star_rating:u32,//star rating (eg 5 or 4 stars)
+    pub rating:String,//normal rating (eg pg, pg13)
+    pub description:String,//Dexcription Of video
+}
 #[derive(Clone)]
 pub struct VideoDB{
     database: db::FileDB,
@@ -77,6 +83,19 @@ impl VideoDB{
         }
         return Err("video not found".to_string());
 
+    }
+    pub fn get_vid_data(&self,vid_path:String)->Result<VideoRatingData,String>{
+        let res = self.database.get_file_from_path(vid_path.clone());
+        if res.is_ok(){
+            let vid = res.unwrap();
+            let out = VideoRatingData{star_rating:vid.metadata.video_data.star_rating,
+                rating:vid.metadata.video_data.rating.clone(),
+                description: vid.metadata.video_data.description.clone()};
+            return Ok(out);
+        }
+        else{
+            return Err(format!("videos.rs get_vid_data: path {} not found",vid_path));
+        }
     }
     pub fn get_vid_html_from_path(&self,path_base:String,
         thumbnail_base:String,vid_path:String)->Result<VideoHtml,String>{

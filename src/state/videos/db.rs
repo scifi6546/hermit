@@ -158,6 +158,16 @@ impl FileDB{
         }
         return Err(format!("db.rs: file path {} not found",path));
     }
+    //edits video data
+    pub fn edit_video_data(&mut self,path:String,data:VideoData)->Result<String,String>{
+        for vid in self.iter_mut(){
+            if vid.file_path==path{
+                vid.metadata.video_data=data;
+                return Ok("db.rs edit_video_data(): video data set sucessfully".to_string());
+            }
+        }
+        return Err(format!("db.rs edit_video_data(): video for path {} not found",path));
+    }
     //compares to files on disk and updates internal record accordingly
     pub fn compare_disk(&mut self)->Result<String,String>{
         self.sort_by_filename();
