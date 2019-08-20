@@ -2,7 +2,7 @@
 <head>
 	<link href="/static/index.css" rel="stylesheet"></link>
 	<meta name="viewport" content="width=device-width, initial-scale=1" /> 
-	 <script src="static/jquery.js" type="text/javascript"></script>
+	<script src="static/jquery.js" type="text/javascript"></script>
 </head>
 <div class="topnav">
 	<a href="TEST" class="topnav_link">Log Out</a>
@@ -25,7 +25,7 @@ var playlist_play =
 		"</div>"+
 	"</div>"
 var playlist_div=
-	"<div class=playlist id={PLAYLIST_NAME}><img src='{THUMB_URL}'class=thumbnail/>{PLAYLIST_NAME}</div>";
+	"<div class=playlist id='{PLAYLIST_NAME}'><img src='{THUMB_URL}'class=thumbnail/>{PLAYLIST_NAME}</div>";
 //index in playlist_videos of current video
 var CURRENT_VIDEO_INDEX=0;
 var LAST_VOLUME=1;
@@ -47,9 +47,10 @@ function set_video(input){
 	console.log(this);
 	//getting index set in setup_playlist_preview_div
 	CURRENT_VIDEO_INDEX=this.index;
-	$(".playlist_video_src")[0].src=this.video.url;
-	$(".playlist_video")[0].load();
-	$(".playlist_video")[0].play();
+	document.getElementsByClassName(".playlist_video_src")[0].src=this.video.url;
+	let video = document.getElementsByClassName(".playlist_video")[0];
+	video.load();
+	video.play();
 
 }
 var playlist_preview_div="<img class=video_thumb id='{VIDEO_PATH}' src='{THUMB_URL}'/>";
@@ -90,14 +91,16 @@ function add_playlist_html(ajax_response){
 	temp_str = temp_str.replace(/{THUMB_URL}/gi,video.thumbnail_url);
 	
 	$(".body").append(temp_str);
-	let playlist_div_html = $(".body").children("#"+this.name);
+	let body=document.getElementsByClassName("body")[0];
+	console.log(body);
+	let playlist_div_html=document.getElementById(this.name);
 	console.log(playlist_div_html);
 	//Again I am sorry. I am setting videos on playlist_div_html inorder to
 	//acces video data
 	// Setting playlist to this which is playlist passed in through context
-	playlist_div_html[0].video=video;
-	playlist_div_html[0].playlist = this;
-	playlist_div_html[0].onclick=function(input){
+	playlist_div_html.video=video;
+	playlist_div_html.playlist = this;
+	playlist_div_html.onclick=function(input){
 		console.log(this);
 		$(".body").empty();
 		let play_str = playlist_play.replace(/{PLAYLIST_NAME}/gi,input.id);
