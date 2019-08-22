@@ -93,7 +93,7 @@ impl State{
         }
         pub fn get_playlist_all(&self,user_token:String)->Result<Vec<videos::HtmlPlaylist>,String>{
             if self.is_auth(user_token){
-                return Ok(self.video_db.get_playlist_all());
+                return Ok(self.video_db.get_playlist_all("/videos/".to_string(),"/thumbnails/".to_string()));
             }else{
                 return Err("not authorized".to_string());
             }

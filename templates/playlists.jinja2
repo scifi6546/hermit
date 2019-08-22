@@ -13,6 +13,94 @@
 <div class="body">
 </div>
 <script>
+
+	class Playlist{
+		//input: {"name":"foo","videos":[VIDEO_OBJ]}
+		constructor(playlist){
+			//SETTING GLOBALS
+
+			this.playlist = playlist;
+			this.playlistDiv="<div class=playlist id='{PLAYLIST_NAME}'><img src='{THUMB_URL}'class=thumbnail/>{PLAYLIST_NAME}</div>";
+
+			console.log("This");
+			console.log(this);
+			let first_vid = playlist.videos[0];
+			//replacing playlist name
+			let temp_str = this.playlistDiv.replace(/{PLAYLIST_NAME}/gi,playlist.name);
+			//replacing thumburl
+			temp_str = temp_str.replace(/{THUMB_URL}/gi,first_vid.thumbnail_url);
+	
+			$(".body").append(temp_str);
+			this.playlist_div_html=document.getElementById(playlist.name);
+			//Again I am sorry. I am setting videos on playlist_div_html inorder to
+			//acces video data
+			// Setting playlist to this which is playlist passed in through context
+			this.playlist_div_html.playlist = this.playlist;
+			this.playlist_div_html.onclick=function(input){
+				destroy_playlist_previews(this.playlist);
+			}
+		}
+		destroy(){
+			$(this.playlist_div_html).remove();	
+		}
+	}
+class PlaylistPlay{
+	constructor(playlist){
+
+	this.playlist_play = 
+	"<div class=playlist_div id={PLAYLIST_NAME}>"+
+		"<div class=video_div>"+
+			"<video controls class=playlist_video>"+
+				"<source class=playlist_video_src src='{VIDEO_URL}'/>"+
+			"</video>"+
+		"</div>"+
+		"<div class=video_preview_div>"+
+
+		"</div>"+
+	"</div>"
+	this.playlist_preview_div="<img class=video_thumb id='{VIDEO_PATH}' src='{THUMB_URL}'/>";
+		this.playlist=playlist;
+		this.volume=1.0;
+
+
+		let temp = this.playlist_play.replace(/{PLAYLIST_NAME}/gi,playlist.name);
+		temp = temp.replace(/{VIDEO_URL}/gi,playlist.videos[0].url);
+		$(".body_no_grid").append(temp);
+		let video = $(".playlist_video");
+		video[0].playlist_obj = this;
+		video[0].onended=function(input){
+			console.log(this);	
+			this.playlist_obj.play_next_video();
+		};
+		video[0].onvolumechange=function(input){
+			this.playlist_obj.set_volume()
+
+		}
+		for(i in this.playlist.videos){
+			let temp_preview = this.playlist_preview_div.replace(/{VIDEO_PATH}/gi,this.playlist.videos[i].video_path);
+			temp_preview = temp_preview.replace(/{THUMB_URL}/gi,this.playlist.videos[i].thumbnail_url);
+			$(".video_preview_div").append(temp_preview);
+		}
+		this.current_video=0;
+		
+	}
+	set_volume(){
+		this.volume=$(".playlist_video")[0].volume;
+		console.log(this.volume);
+	}
+	play_next_video(){
+		if(this.current_video+1<this.playlist.videos.length){
+			this.curent_video++;
+		}else{
+			this.curent_video=0;
+		}
+		$(".playlist_video_src")[0].src=this.playlist.videos[
+			this.current_video].url;
+		$(".playlist_video")[0].load();
+		$(".playlist_video")[0].play();
+		$(".playlist_video")[0].volume=this.volume;
+	}
+}
 var playlist_play = 
 	"<div class=playlist_div id={PLAYLIST_NAME}>"+
 		"<div class=video_div>"+
@@ -26,10 +114,31 @@ var playlist_play =
 	"</div>"
 var playlist_div=
 	"<div class=playlist id='{PLAYLIST_NAME}'><img src='{THUMB_URL}'class=thumbnail/>{PLAYLIST_NAME}</div>";
+let playlist_objs=[]
+$.ajax({url:"/api/get_playlist_all",type:"GET",complete:function(input){
+	console.log(input);
+	let plays = JSON.parse(input.responseText);
+	console.log(plays);
+	for(i in plays){
+		playlist_objs.push(new Playlist(plays[i]));
+	}
+}});
+playlist_play=""
+function destroy_playlist_previews(playlist){
+	for(var i=playlist_objs.length-1; i>=0;i--){	
+		playlist_objs[i].destroy();
+		playlist_objs.pop(i);
+	}
+			$(".body")[0].className="body_no_grid";
+	playlist_play=new PlaylistPlay(playlist);
+}
 //index in playlist_videos of current video
 var CURRENT_VIDEO_INDEX=0;
 var LAST_VOLUME=1;
+//gets playlists:
+
 //sets the video to clicked on one
+/*
 function play_next_video(event_in){
 	if(CURRENT_VIDEO_INDEX+1<playlist_videos.length){
 	
@@ -138,4 +247,5 @@ $.ajax({url:"/api/get_playlist_all",type:"GET",complete:function(input){
 		$.ajax({context:plays[i],url:"/api/get_video",type:"POST",data:data_str,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:add_playlist_html});
 	}
 }});
+*/
 </script>

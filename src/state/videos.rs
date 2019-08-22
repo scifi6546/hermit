@@ -28,7 +28,7 @@ pub struct VideoDB{
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct HtmlPlaylist{
-    pub video_paths:Vec<String>,//paths of all videos, path is a unique identifier
+    pub videos:Vec<VideoHtml>,//paths of all videos, path is a unique identifier
     pub name:String,//name of playlist
 }
 impl VideoDB{
@@ -115,12 +115,20 @@ impl VideoDB{
     pub fn add_playlist(&mut self, playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
         return self.database.add_playlist(playlist_name,video_paths);
     }
-    pub fn get_playlist_all(&self)->Vec<HtmlPlaylist>{
+    pub fn get_playlist_all(&self,path_base:String,thumbnail_base:String)->Vec<HtmlPlaylist>{
         let temp_play = self.database.get_playlist_all();
         let mut out_vec = Vec::new();
         out_vec.reserve(temp_play.len());
         for play in temp_play{
-            out_vec.push(HtmlPlaylist{name:play.name,video_paths:play.video_paths})
+            let mut vid_vec = Vec::new();
+            vid_vec.reserve(play.video_paths.len());
+            for name in play.video_paths{
+                let res = self.get_vid_html_from_path(path_base.clone(),thumbnail_base.clone(),name);
+                if res.is_ok(){
+                    vid_vec.push(res.ok().unwrap());
+                }
+            }
+            out_vec.push(HtmlPlaylist{name:play.name,videos:vid_vec})
         }
         return out_vec;
     }
