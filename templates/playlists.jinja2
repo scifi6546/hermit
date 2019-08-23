@@ -89,6 +89,7 @@ class PlaylistPlay{
 		let shuffle = $(".shuffle")[0]
 		shuffle.playlist=this;
 		shuffle.onclick=function(){
+			
 			this.playlist.shuffle();
 		}
 		this.preview_divs=[]//array of preview divs
@@ -97,7 +98,12 @@ class PlaylistPlay{
 			temp_preview = temp_preview.replace(/{THUMB_URL}/gi,this.playlist.videos[i].thumbnail_url);
 			temp_preview = temp_preview.replace(/{VIDEO_NAME}/gi,this.playlist.videos[i].name);
 			let temp = $(temp_preview).appendTo(".video_preview_div")
+			temp[0].index=i
+			temp[0].playlist=this;
 			this.preview_divs.push(temp[0]);
+			temp[0].onclick=function(){
+				this.playlist.play(this.index);
+			}
 			console.log("temp: ");
 			console.log(temp);
 		}
@@ -107,12 +113,31 @@ class PlaylistPlay{
 		$(this.preview_divs[this.current_video]).attr("class","preview_div_selected");
 		
 	}
+	play(index){
+		if(index<this.playlist.videos.length){
+			$(this.preview_divs[this.current_video]).attr("class","preview_div");
+			this.current_video=index;
+			$(this.preview_divs[this.current_video]).attr("class","preview_div_selected");
+			$(".playlist_video_src")[0].src=this.playlist.videos[
+				this.current_video].url;
+			$(".playlist_video")[0].load();
+			$(".playlist_video")[0].play();
+			$(".playlist_video")[0].volume=this.volume;
+		}
+	}
 	set_volume(){
 		this.volume=$(".playlist_video")[0].volume;
 		console.log(this.volume);
 	}
 	shuffle(){
-		this.play_type="shuffle";
+		if(this.play_type!="shuffle"){
+			$(".shuffle")[0].src="/static/icons/shuffle-selected.svg";
+			this.play_type="shuffle";
+		}else{
+
+			$(".shuffle")[0].src="/static/icons/shuffle.svg";
+			this.play_type="linear";
+		}
 	}
 	play_next_video(){
 		$(this.preview_divs[this.current_video]).attr("class","preview_div");
@@ -152,7 +177,7 @@ function random_num(max,last){
 	let rand_num_int = Math.floor(Math.random()*(max+1));
 	console.log("rand int")
 	console.log(rand_num_int);
-	if(random_num==last){
+	if(rand_num_int==last){
 		return random_num(max,last);
 	}else{
 		return rand_num_int;
