@@ -97,7 +97,7 @@ html{
 	width:100%;
 	min-width: 100%;
 	display: grid;
-	grid-template-columns: auto 200px;
+	grid-template-columns: auto 400px;
 	grid-template-rows: 1fr;
 }
 .video_preview_div{
@@ -105,8 +105,27 @@ html{
 	overflow-y: scroll;
 	max-height: 1fr;
 	height: 600px;
+	width: 100%;
 	grid-template-columns: auto;
+	background-color:#2c3145;
 
+	color: #fff;
+}
+.preview_div_selected{
+	background-color: #777d95;
+	display: grid;
+	grid-template-columns: 60% 40%;
+	margin: 10px;
+	 text-overflow: ellipsis;
+  height: 90px;
+}
+.preview_div{
+	background-color: #373d53;
+	display: grid;
+	grid-template-columns: 60% 40%;
+	margin: 10px;
+	 text-overflow: ellipsis;
+  height: 90px;
 }
 .video_thumb{
 	width: 100%;
@@ -125,6 +144,8 @@ html{
 		grid-template-columns:auto;
 	}
 }
+
+
 
 
 

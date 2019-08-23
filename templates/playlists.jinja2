@@ -46,7 +46,7 @@
 	}
 class PlaylistPlay{
 	constructor(playlist){
-
+	this.play_type="linear";
 	this.playlist_play = 
 	"<div class=playlist_div id={PLAYLIST_NAME}>"+
 		"<div class=video_div>"+
@@ -56,15 +56,26 @@ class PlaylistPlay{
 		"</div>"+
 		"<div class=video_preview_div>"+
 
+			"<div class=preview_header>"+
+				"<img class=shuffle src=/static/icons/shuffle.svg></img>"+
+
+				"<img class=repeat src=/static/icons/repeat.svg></img>"+
+			"</div>"+
 		"</div>"+
 	"</div>"
-	this.playlist_preview_div="<img class=video_thumb id='{VIDEO_PATH}' src='{THUMB_URL}'/>";
+		this.playlist_preview_div="<div class=\"preview_div\">"+
+			"<div class = preview_description>"+
+				"{VIDEO_NAME}"+
+			"</div>"+
+			"<img class=video_thumb id='{VIDEO_PATH}' src='{THUMB_URL}'/>"+
+		"</div";
 		this.playlist=playlist;
 		this.volume=1.0;
 
 
 		let temp = this.playlist_play.replace(/{PLAYLIST_NAME}/gi,playlist.name);
 		temp = temp.replace(/{VIDEO_URL}/gi,playlist.videos[0].url);
+		
 		$(".body_no_grid").append(temp);
 		let video = $(".playlist_video");
 		video[0].playlist_obj = this;
@@ -74,26 +85,62 @@ class PlaylistPlay{
 		};
 		video[0].onvolumechange=function(input){
 			this.playlist_obj.set_volume()
-
 		}
+		let shuffle = $(".shuffle")[0]
+		shuffle.playlist=this;
+		shuffle.onclick=function(){
+			this.playlist.shuffle();
+		}
+		this.preview_divs=[]//array of preview divs
 		for(i in this.playlist.videos){
 			let temp_preview = this.playlist_preview_div.replace(/{VIDEO_PATH}/gi,this.playlist.videos[i].video_path);
 			temp_preview = temp_preview.replace(/{THUMB_URL}/gi,this.playlist.videos[i].thumbnail_url);
-			$(".video_preview_div").append(temp_preview);
+			temp_preview = temp_preview.replace(/{VIDEO_NAME}/gi,this.playlist.videos[i].name);
+			let temp = $(temp_preview).appendTo(".video_preview_div")
+			this.preview_divs.push(temp[0]);
+			console.log("temp: ");
+			console.log(temp);
 		}
 		this.current_video=0;
+		console.log("preview_divs: ")
+		console.log(this.preview_divs);
+		$(this.preview_divs[this.current_video]).attr("class","preview_div_selected");
 		
 	}
 	set_volume(){
 		this.volume=$(".playlist_video")[0].volume;
 		console.log(this.volume);
 	}
+	shuffle(){
+		this.play_type="shuffle";
+	}
 	play_next_video(){
-		if(this.current_video+1<this.playlist.videos.length){
-			this.curent_video++;
-		}else{
-			this.curent_video=0;
+		$(this.preview_divs[this.current_video]).attr("class","preview_div");
+		console.log("play_type")
+		console.log(this.play_type);
+		if(this.play_type=="linear"){
+			console.log("length: ");
+			console.log(this.playlist.videos.length);
+			if(this.current_video+1<this.playlist.videos.length){
+				console.log("added video")
+				this.current_video+=1;
+				console.log(this.current_video);
+			}else{
+				this.current_video=0;
+			}
 		}
+		if(this.play_type=="shuffle"){
+			this.current_video=random_num(this.playlist.videos.length-1,this.current_video);
+		}
+		let vid_thumb = this.preview_divs[this.current_video];
+		console.log(vid_thumb);
+		console.log("preview divs: ");
+		console.log("preview divs: ");
+		console.log(this.preview_divs);
+		debug_temp = this.preview_divs;
+		console.log("Current video: ");
+		console.log(this.current_video);
+		$(this.preview_divs[this.current_video]).attr("class","preview_div_selected");
 		$(".playlist_video_src")[0].src=this.playlist.videos[
 			this.current_video].url;
 		$(".playlist_video")[0].load();
@@ -101,6 +148,17 @@ class PlaylistPlay{
 		$(".playlist_video")[0].volume=this.volume;
 	}
 }
+function random_num(max,last){
+	let rand_num_int = Math.floor(Math.random()*(max+1));
+	console.log("rand int")
+	console.log(rand_num_int);
+	if(random_num==last){
+		return random_num(max,last);
+	}else{
+		return rand_num_int;
+	}
+}
+var debug_temp="";
 var playlist_play = 
 	"<div class=playlist_div id={PLAYLIST_NAME}>"+
 		"<div class=video_div>"+
@@ -109,7 +167,12 @@ var playlist_play =
 			"</video>"+
 		"</div>"+
 		"<div class=video_preview_div>"+
+			"<div class=preview_header>"+
+				"<img class=shuffle src=/static/icons/shuffle.svg></img>"+
 
+				"<img class=shuffle src=/static/icons/repeat.svg></img>"+
+			"</div>"
+			
 		"</div>"+
 	"</div>"
 var playlist_div=
@@ -137,115 +200,4 @@ var CURRENT_VIDEO_INDEX=0;
 var LAST_VOLUME=1;
 //gets playlists:
 
-//sets the video to clicked on one
-/*
-function play_next_video(event_in){
-	if(CURRENT_VIDEO_INDEX+1<playlist_videos.length){
-	
-		CURRENT_VIDEO_INDEX+=1;
-	}else{
-		CURRENT_VIDEO_INDEX=0;
-	}
-
-	$(".playlist_video_src")[0].src=playlist_videos[CURRENT_VIDEO_INDEX].url;
-	$(".playlist_video")[0].load();
-	$(".playlist_video")[0].play();
-	$(".playlist_video")[0].volume=LAST_VOLUME;
-}
-function set_video(input){
-	console.log(this);
-	//getting index set in setup_playlist_preview_div
-	CURRENT_VIDEO_INDEX=this.index;
-	document.getElementsByClassName(".playlist_video_src")[0].src=this.video.url;
-	let video = document.getElementsByClassName(".playlist_video")[0];
-	video.load();
-	video.play();
-
-}
-var playlist_preview_div="<img class=video_thumb id='{VIDEO_PATH}' src='{THUMB_URL}'/>";
-function setup_playlist_preview_div(ajax){
-	let data = JSON.parse(ajax.responseText);
-	console.log("data");
-	console.log(data);
-	let preview_str = playlist_preview_div.replace(/{THUMB_URL}/gi,data.thumbnail_url);
-	preview_str=preview_str.replace(/{VIDEO_PATH}/gi,data.path);
-	$(".video_preview_div").append(preview_str);
-	let children = $(".video_preview_div").children();
-	let preview_div = ""
-	let video_index = 0;	
-	for( i in children){
-		if(children[i].id==data.path){
-			preview_div=children[i]
-			video_index=i;
-		}
-	}
-	//setting video obj to preview div
-	preview_div.video=data;
-	console.log(ajax);
-	let index = playlist_videos.length;
-	playlist_videos.push(data);
-	console.log("preview div");
-	console.log(preview_div);
-	preview_div.index=video_index;
-	preview_div.onclick=set_video;
-}
-//array containing all video objects
-playlist_videos=[]
-//adds playlist when a video is gotten from /api/get_video
-function add_playlist_html(ajax_response){
-	let video = JSON.parse(ajax_response.responseText);
-	console.log("This");
-	console.log(this);
-	let temp_str = playlist_div.replace(/{PLAYLIST_NAME}/gi,this.name);
-	temp_str = temp_str.replace(/{THUMB_URL}/gi,video.thumbnail_url);
-	
-	$(".body").append(temp_str);
-	let body=document.getElementsByClassName("body")[0];
-	console.log(body);
-	let playlist_div_html=document.getElementById(this.name);
-	console.log(playlist_div_html);
-	//Again I am sorry. I am setting videos on playlist_div_html inorder to
-	//acces video data
-	// Setting playlist to this which is playlist passed in through context
-	playlist_div_html.video=video;
-	playlist_div_html.playlist = this;
-	playlist_div_html.onclick=function(input){
-		console.log(this);
-		$(".body").empty();
-		let play_str = playlist_play.replace(/{PLAYLIST_NAME}/gi,input.id);
-		console.log(this.video.url);
-		play_str = play_str.replace(/{VIDEO_URL}/gi,this.video.url);
-		$(".body").append(play_str);
-
-		//setting up autoplay for video
-		$(".playlist_video")[0].onended=play_next_video;
-		//settingup volume
-
-		$(".playlist_video")[0].onvolumechange=function(){
-			LAST_VOLUME=$(".playlist_video")[0].volume;
-		};
-		console.log($(".playlist_video")[0]);
-		for(i in this.playlist.video_paths){
-			let get_json = {video_path:this.playlist.video_paths[i]}
-			let data_str = JSON.stringify(get_json);
-			$.ajax({url:"/api/get_video",type:"POST",data:data_str,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:setup_playlist_preview_div});
-		}
-		//changing class of body div to override css-grid
-		$(".body")[0].className="body_no_grid";
-	}
-}
-$.ajax({url:"/api/get_playlist_all",type:"GET",complete:function(input){
-	console.log(input);
-	let plays = JSON.parse(input.responseText);
-	for(i in plays){
-		get_json = {video_path:plays[i].video_paths[0]}
-		let data_str = JSON.stringify(get_json);
-		console.log(data_str);
-		//I am sorry future me I had to write this mess, this gets an ajax request
-		//and on complete addes the playlist div to the body object
-		//the context sets this inside of the internal function as plays[i]
-		$.ajax({context:plays[i],url:"/api/get_video",type:"POST",data:data_str,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:add_playlist_html});
-	}
-}});
-*/
 </script>
