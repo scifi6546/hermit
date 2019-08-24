@@ -3,6 +3,18 @@
 	/*! padding: 15px; */
 	/*! margin: 5px; */
 }
+.playlist_add{
+	height: 24px;
+	position: relative;
+	right: 47%;
+	bottom: 84%;
+}
+.video_info{
+	height: 24px;
+	position: relative;
+	left: 55%;
+	bottom: 91.7%;
+}
 .error{
 	background-color:#72707e;
 	padding:10px;
@@ -15,6 +27,15 @@ video{
 	/*! flex-grow: 1; */
 	/*! max-width: 100%; */
 	width: 100%;
+}
+.video_description{
+	color:white;
+	margin: 10px;
+}
+.video_grid{
+	display:grid;
+	grid-template-columns: 60% 40%;
+	background-color: #5a576c;
 }
 .video_div a{
 	width:100%;
@@ -43,6 +64,7 @@ html{
 	padding: 5px;
 	margin: 10px;
 }
+
 .playlist_name{
 	text-align: center;
 }
@@ -144,6 +166,10 @@ html{
 		grid-template-columns:auto;
 	}
 }
+
+
+
+
 
 
 

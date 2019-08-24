@@ -18,12 +18,18 @@
 <div class="body">
 {% for vid in videos %}
 	<div class="video_div">
-		<a href="{{vid.html_url}}">
-			<img class="video_img" src="{{vid.thumbnail_url}}"/>
-		</a>
-		<button class="playlist_add" id="{{vid.path}}">
-			Add to Playlist	
-		</button>
+		<div class="video_grid">
+			<a href="{{vid.html_url}}">
+				<img class="video_img" src="{{vid.thumbnail_url}}"/>
+			</a>
+			<div class="video_description">
+				{{vid.name}}
+			</div>
+		</div>	
+		<img class="playlist_add" id="{{vid.path}}" src="/static/icons/add.svg">
+		</img>
+		<img class="video_info" id="{{vid.path}}" src="/static/icons/info.svg">
+		</img>
 	</div>
 {% endfor %}
 </div>

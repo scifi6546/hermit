@@ -12,7 +12,7 @@ $(document).ready(function(){
 			if(clicked_buttons[i]===id){
 				clicked_buttons.splice(i,1);
 				console.log("found");
-				$(test.target).parent().css("background-color","#0000");
+				$(test.target).parent().children(".video_grid").css("background-color","#5a576c");
 				found=true;
 			}
 		}
@@ -20,7 +20,7 @@ $(document).ready(function(){
 			clicked_buttons.push(id);
 			console.log(id)
 			console.log($(test.target));
-			$(test.target).parent().css("background-color","#ffcf00");
+			$(test.target).parent().children(".video_grid").css("background-color","#777d95");
 		}
 		if(clicked_buttons.length>0){
 			$(".make_playlist").slideDown(500);
