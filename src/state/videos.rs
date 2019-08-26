@@ -7,12 +7,19 @@ use std::sync::{Arc,Mutex,RwLock};
 mod thumbnail;
 mod db;
 #[derive(Clone,Serialize,Deserialize)]
+pub struct VideoData{
+    pub star_rating:u32,//star rating (eg 5 or 4 stars)
+    pub rating:String,//normal rating (eg pg, pg13)
+    pub description:String,//Dexcription Of video
+}
+#[derive(Clone,Serialize,Deserialize)]
 pub struct VideoHtml{
     pub name: String,
     pub url: String,
     pub thumbnail_url: String,
     pub html_url:String,
     pub path:String,
+    pub video_data:VideoRatingData,
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct VideoRatingData{
@@ -30,6 +37,9 @@ pub struct VideoDB{
 pub struct HtmlPlaylist{
     pub videos:Vec<VideoHtml>,//paths of all videos, path is a unique identifier
     pub name:String,//name of playlist
+}
+fn empty_video_rating()->VideoRatingData{
+    return VideoRatingData{star_rating:0,rating:"".to_string(),description:"".to_string()}; 
 }
 impl VideoDB{
     fn make_thumbnails(&mut self)->Result<String,String>{
@@ -61,7 +71,9 @@ impl VideoDB{
                 thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
                 vec_out.push(VideoHtml{name:file.name.clone(),
                     url:url.clone(),thumbnail_url:thumbnail_name,
-                    html_url:url.clone(),path:file.file_path.clone()});
+                    html_url:url.clone(),path:file.file_path.clone(),
+                    video_data:empty_video_rating(),
+                });
             }
         }
         return vec_out;
@@ -78,7 +90,9 @@ impl VideoDB{
             let mut thumbnail_name=thumbnail_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
             return Ok(VideoHtml{name:file.name.clone(),url:url.clone(),thumbnail_url:thumbnail_name,
-                html_url:url,path:file.file_path.clone()});
+                html_url:url,path:file.file_path.clone(),
+                video_data:empty_video_rating(), 
+            });
             }
         }
         return Err("video not found".to_string());
@@ -106,11 +120,22 @@ impl VideoDB{
             let mut url = path_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name);
             url.push_str(&file.name);
-            return Ok(VideoHtml{name:file.name,url:url.clone(),thumbnail_url:thumbnail_name,html_url:url,path:file.file_path.clone()});
+            return Ok(VideoHtml{name:file.name,url:url.clone(),
+                thumbnail_url:thumbnail_name,html_url:url,
+                path:file.file_path.clone(),
+                video_data:empty_video_rating(), 
+            });
 
         }else{
             return Err(res.err().unwrap());
         }
+    }
+    pub fn edit_video_data_path(&mut self,path:String,
+            to_change_to: VideoRatingData)->Result<String,String>{
+        return self.database.edit_videodata(path,
+          db::VideoData{rating: to_change_to.rating,star_rating: to_change_to.star_rating,
+            description:to_change_to.description
+        });
     }
     pub fn add_playlist(&mut self, playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
         return self.database.add_playlist(playlist_name,video_paths);

@@ -141,6 +141,15 @@ impl FileDB{
             return Err(res.err().unwrap());
         }
     }
+    pub fn edit_videodata(&mut self,path:String,change_to: VideoData)->Result<String,String>{
+        for video in self.iter_mut(){
+            if video.file_path==path{
+                video.metadata.video_data=change_to;
+                return Ok("success".to_string());
+            }
+        }
+        return Err(format!("db.rs: {} not found",path));
+    }
     //gets mutable iterator of FileData
     pub fn iter_mut(&mut self)->std::slice::IterMut<'_,FileData>{
         let iterator = self.files.iter_mut();

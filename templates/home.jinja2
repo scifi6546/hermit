@@ -16,6 +16,31 @@
 	<button id="submit_playlist">Submit</button>
 </div>
 <div class="body">
+<script>
+	let video_info_edit=
+	"<div class='video_edit'>"+
+		"<form class=video_edit_div onSubmit= return foo(); action=''"+
+			"<input type=text class=video_rating> Video Rating </input>"+
+			"<input type=text class=video_star_rating> Video Star Rating </input>"+
+			"<input type=text class=video_description> Description </input>"+
+			"<input type=submit></input>"+
+		"</form>"+
+	"</div>";
+	$(document).ready(function(){
+		$(".video_info").on("click",function(){
+			console.log(this);
+			let parent_div = $(this).parent();
+			console.log(parent_div);
+			$(parent_div).replaceWith($(video_info_edit));
+			console.log("clicked");
+		});
+	});
+	function foo(){
+
+		console.log(this);
+		return false;
+	}
+</script>
 {% for vid in videos %}
 	<div class="video_div">
 		<div class="video_grid">
