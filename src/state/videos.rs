@@ -49,11 +49,8 @@ impl VideoDB{
                 let thumb = thumbnail::make_thumb(file.file_path.clone(),
                     self.thumb_dir.clone(),self.thumb_res.clone());
                     file.metadata=db::Metadata{thumbnail_path:thumb.path,thumbnail_name:thumb.name,
-                        thumbnail_res:thumb.resolution,video_data:db::VideoData{
-                        star_rating:0,
-                        rating: "".to_string(),
-                        description:"".to_string(),
-                    }};
+                        thumbnail_res:thumb.resolution,video_data:file.metadata.video_data.clone()
+                    };
                 
             }
         }
@@ -66,13 +63,17 @@ impl VideoDB{
                 let name = file.name.clone();
                 let mut url = path_base.clone();
                 url.push_str(&name);
-
+                
+                let video_data = VideoRatingData{rating:file.metadata.video_data.rating.clone(),
+                    star_rating:file.metadata.video_data.star_rating,
+                    description:file.metadata.video_data.description.clone()};
+                println!("video_description: {}",video_data.description);
                 let mut thumbnail_name=thumbnail_base.clone();
                 thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
                 vec_out.push(VideoHtml{name:file.name.clone(),
                     url:url.clone(),thumbnail_url:thumbnail_name,
                     html_url:url.clone(),path:file.file_path.clone(),
-                    video_data:empty_video_rating(),
+                    video_data:video_data,
                 });
             }
         }
@@ -87,11 +88,14 @@ impl VideoDB{
             let mut url = path_base;
             url.push_str(&name);
 
+            let video_data = VideoRatingData{rating:file.metadata.video_data.rating.clone(),
+                    star_rating:file.metadata.video_data.star_rating,
+                    description:file.metadata.video_data.description.clone()};
             let mut thumbnail_name=thumbnail_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
             return Ok(VideoHtml{name:file.name.clone(),url:url.clone(),thumbnail_url:thumbnail_name,
                 html_url:url,path:file.file_path.clone(),
-                video_data:empty_video_rating(), 
+                video_data:video_data, 
             });
             }
         }
@@ -120,10 +124,13 @@ impl VideoDB{
             let mut url = path_base.clone();
             thumbnail_name.push_str(&file.metadata.thumbnail_name);
             url.push_str(&file.name);
+            let video_data = VideoRatingData{rating:file.metadata.video_data.rating.clone(),
+                    star_rating:file.metadata.video_data.star_rating,
+                    description:file.metadata.video_data.description.clone()};
             return Ok(VideoHtml{name:file.name,url:url.clone(),
                 thumbnail_url:thumbnail_name,html_url:url,
                 path:file.file_path.clone(),
-                video_data:empty_video_rating(), 
+                video_data:video_data, 
             });
 
         }else{

@@ -24,6 +24,11 @@ pub struct State{
 pub struct UserOut{
     pub username:String
 }
+#[derive(Clone,Serialize,Deserialize)]
+pub struct VideoEditStruct{
+    pub path:String,
+    pub data:videos::VideoRatingData,
+}
 impl State{
     //returns cookie if user is suscessfully authenticated
     pub fn auth_user(&mut self,username:String,password:String)->Result<String,String>{
@@ -54,6 +59,13 @@ impl State{
         }
         let res = self.write();
         return res;
+    }
+    pub fn edit_videodata(&mut self,token:String,to_change: VideoEditStruct)->Result<String,String>{
+        if self.is_auth(token){
+            return self.video_db.edit_video_data_path(to_change.path,to_change.data);
+        }else{
+            return Err("not authorized".to_string());
+        }
     }
     pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
         if self.is_auth(user_token){ 
@@ -312,6 +324,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/add_playlist",web::post().to(add_playlist_api))
             .route("/api/get_playlist_all",web::get().to(get_playlist_api))
             .route("/api/get_video",web::post().to(get_video))
+            .route("/api/edit_video",web::post().to(edit_video))
             .route("/videos/{video_name}",web::get().to(video_files))
             .service(actix_files::Files::new("/static","./static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
@@ -383,6 +396,23 @@ fn add_user(info:web::Json<UserReq>,data:web::Data<RwLock<State>>,session:Sessio
     }
     return Ok("failed".to_string());
 }
+pub fn edit_video(info:web::Json<VideoEditStruct>,data:web::Data<RwLock<State>>,session: Session)
+    ->Result<String>{
+        let mut state_data= data.write().unwrap();
+        let token_res = session.get("token");
+        if token_res.is_ok(){
+            println!("info: {}",info.path);
+            let res_out = state_data.edit_videodata(token_res.unwrap().unwrap(),info.clone());
+            if res_out.is_ok(){
+                return Ok(res_out.ok().unwrap());
+            }else{
+                return Ok(res_out.err().unwrap());
+            }
+        }else{
+            return Ok("not authorized".to_string());
+        }
+    }
+
 #[derive(Serialize)]
 pub struct UsersApi{
     users:Vec<UserOut>

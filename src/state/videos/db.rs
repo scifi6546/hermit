@@ -29,6 +29,31 @@ pub struct FileData{
     pub extension:String,
     pub metadata:Metadata,
 }
+impl std::fmt::Display for FileData{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let out_string:String = format!(
+"file_name: {}
+        name:{}
+        file_path:{}
+        extension:{}
+        metadata:
+            thumbnail_name:{}
+            thumbnail_path:{}
+            thumbnail_res:{}
+            video_data:
+                star_rating:{}
+                rating: {}
+                description:{}",
+                self.file_name,self.name,self.file_path,self.extension,
+                    self.metadata.thumbnail_name,self.metadata.thumbnail_path,self.metadata.thumbnail_res,
+                    self.metadata.video_data.star_rating,self.metadata.video_data.rating,self.metadata.video_data.description
+                
+
+
+        );
+        return write!(f, "{}",out_string);
+    }
+}
 impl FileData{
     pub fn is_video(&self)->bool{
         if self.extension=="m4v".to_string() || self.extension=="ogg".to_string() ||
@@ -145,9 +170,18 @@ impl FileDB{
         for video in self.iter_mut(){
             if video.file_path==path{
                 video.metadata.video_data=change_to;
-                return Ok("success".to_string());
+                println!("edit video: {}",video.file_path);
+                println!("video description: {}",video.metadata.video_data.description);
+                let res = self.write();
+                if res.is_ok(){
+                    
+                    return Ok("success".to_string());
+                }else{
+                    return Err(res.err().unwrap());
+                }
             }
         }
+        println!("db.rs: {} not found",path);
         return Err(format!("db.rs: {} not found",path));
     }
     //gets mutable iterator of FileData
@@ -166,16 +200,6 @@ impl FileDB{
             }
         }
         return Err(format!("db.rs: file path {} not found",path));
-    }
-    //edits video data
-    pub fn edit_video_data(&mut self,path:String,data:VideoData)->Result<String,String>{
-        for vid in self.iter_mut(){
-            if vid.file_path==path{
-                vid.metadata.video_data=data;
-                return Ok("db.rs edit_video_data(): video data set sucessfully".to_string());
-            }
-        }
-        return Err(format!("db.rs edit_video_data(): video for path {} not found",path));
     }
     //compares to files on disk and updates internal record accordingly
     pub fn compare_disk(&mut self)->Result<String,String>{
@@ -309,8 +333,8 @@ impl std::fmt::Display for FileDB{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut out_string:String = String::new();
         for file in self.files.clone(){
-            out_string.push_str("file_name: ");
-            out_string.push_str(file.name.as_str());
+            let file_str:String=format!("{}",file);
+            out_string.push_str(file_str.as_str());
             out_string.push('\n');
         }
         return write!(f, "{}",out_string);
@@ -318,9 +342,10 @@ impl std::fmt::Display for FileDB{
 }
 pub fn new(database_path:String,file_path:String)->Result<FileDB,String>{
     let mut database:FileDB;
+    //creating database
     if Path::new(&database_path).is_file(){
         println!("is file");
-        let res = reload_databse(database_path.clone());
+        let res = reload_database(database_path.clone());
         if res.is_ok(){
             database = res.ok().unwrap();
         }else{
@@ -341,7 +366,6 @@ pub fn new(database_path:String,file_path:String)->Result<FileDB,String>{
     }
     let res = database.write();
     if res.is_ok(){
-        println!("{}",database);
         return Ok(database);
     }else{
         return Err(res.err().unwrap());
@@ -381,7 +405,7 @@ fn create_new_db(database_path:String,file_path:String)->Result<FileDB,String>{
         return Err("db.rs: Folder not found".to_string());
     }
 }
-fn reload_databse(database_path:String)->Result<FileDB,String>{
+fn reload_database(database_path:String)->Result<FileDB,String>{
     let file_res = File::open(database_path.as_str());
     if file_res.is_ok(){
         let mut data_str:String = String::new();
@@ -393,8 +417,12 @@ fn reload_databse(database_path:String)->Result<FileDB,String>{
         let parse_res = serde_json::from_str::<FileDB>(data_str.as_str());
         if parse_res.is_ok(){
             let mut database:FileDB = parse_res.unwrap();
+            
             //todo check if filesystem matches files
             let res = database.compare_disk();
+
+            println!("after compare_disk:");
+            println!("{}",database);         
             if res.is_ok(){
                 return Ok(database);
             }else{
