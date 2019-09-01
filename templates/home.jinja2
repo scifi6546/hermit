@@ -73,12 +73,13 @@
 
 				Rating: {{vid.video_data.rating}}
 				Description: {{vid.video_data.description}}
+				<div class="video_buttons">
+					<img class="playlist_add" id="{{vid.path}}" src="/static/icons/add.svg">
+					</img>
+					<img class="video_info" id="{{vid.path}}" src="/static/icons/info.svg">
+					</img>
+				</div>
 			</div>
 		</div>	
-		<img class="playlist_add" id="{{vid.path}}" src="/static/icons/add.svg">
-		</img>
-		<img class="video_info" id="{{vid.path}}" src="/static/icons/info.svg">
-		</img>
 	</div>
 {% endfor %}
-</div>
