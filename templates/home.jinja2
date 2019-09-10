@@ -69,10 +69,16 @@
 				<img class="video_img" src="{{vid.thumbnail_url}}"/>
 			</a>
 			<div class="video_description">
-				{{vid.name}}
-
-				Rating: {{vid.video_data.rating}}
-				Description: {{vid.video_data.description}}
+				<div class="video_name_text">
+					{{vid.name}}
+				</div>
+		
+				<div class="video_rating">
+					Rating: {{vid.video_data.rating}}
+				</div>
+				<div class="video_description_text">
+					Description: {{vid.video_data.description}}
+				</div>
 				<div class="video_buttons">
 					<img class="playlist_add" id="{{vid.path}}" src="/static/icons/add.svg">
 					</img>
