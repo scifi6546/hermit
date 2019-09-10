@@ -7,7 +7,7 @@ Hermit is tested to work on ubuntu linux and docker. However in theory it shoudl
 ## Instalation Instructions
 The recomended platform is docker. To run on docker type: 
 
-```docker run -p 8088:8088 -v /videos:{VIDEO_DIRECTORY} scifi6546/hermit:latest```
+```docker run -p 8443:8443 -v /videos:{VIDEO_DIRECTORY} /home/app_user/db.json:{DATABASE_FILE_PATH} scifi6546/hermit:latest```
 ### Building the Repository
 
 

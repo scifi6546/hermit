@@ -41,10 +41,20 @@
 			console.log($(".password"));
 			console.log($("#username"));
 
-			$.ajax({url:"/api/setup",type:"POST",data:output,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:function(){
+			$.ajax({url:"/api/setup",type:"POST",data:output,contentType:"application/json",dataType:"json",mimeType:"application/json",complete:function(input){
+				console.log(input);
 				console.log("done loading");
 				$(".loader").remove();	
-				window.location="/";
+				let res_text = input.responseText;
+				if(res_text!="success"){
+					let text = "<div class=error>"+res_text+"</div>"
+					$(".form").append(text);
+
+				}else{
+
+					window.location="/";
+				}
+				//window.location="/";
 			}});
 		}
 </script>

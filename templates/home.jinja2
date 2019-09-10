@@ -9,21 +9,83 @@
 	<a href="TEST" class="topnav_link">Log Out</a>
 	<a href="/settings" class="topnav_link">Settings</a>
 	<a href="/" class="topnav_active">Home</a>
-	<a href="playlists" class="topnav_link">Playlists</a>
+	<a href="/playlists" class="topnav_link">Playlists</a>
 </div>
 <div class="make_playlist">
 	<input type="text" id="set_playlist_name">Playlist Name</input>
 	<button id="submit_playlist">Submit</button>
 </div>
 <div class="body">
+<script>
+	let video_info_edit=
+	"<div class='video_edit' id=\"{PATH}\">"+
+		"<input type=text class=video_rating_edit> Video Rating </input>"+
+		"<input type=text class=video_description_edit> Description </input>"+
+		"<button class=\"video_edit_submit\">Submit</button>"+
+	"</div>";
+	function submit_edit(){
+		console.log("this");
+		console.log(this);
+		console.log("video parent");
+		let video_div = $(this).parent();
+		console.log(video_div);
+		let video_rating=video_div.children(".video_rating_edit").val();
+		let video_description=video_div.children(".video_description_edit").val();
+		console.log("video rating div?");
+		console.log(video_rating);
+		console.log("video description");
+		console.log(video_description);
+		let output = {path:this.path,data:{rating:video_rating,description:video_description,star_rating:5}};
+		console.log("output")
+		console.log(output);
+		$.ajax({url:"/api/edit_video",type:"POST",data:JSON.stringify(output),contentType:"application/json",dataType:"json",mimeType:"application/json",complete:function(foo){console.log("done!");console.log(bar);}});
+	}
+	$(document).ready(function(){
+		$(".video_info").on("click",function(){
+			console.log("this");
+			console.log(this);
+			let parent_div = $(this).parent();
+			console.log(parent_div);
+
+			let path = $(this).attr('id');
+			console.log("Path");
+			console.log(path);
+			let edit = $(video_info_edit)
+			out = $(parent_div).replaceWith(edit);
+			console.log(edit);
+			let submit_div=$(edit).children(".video_edit_submit");
+			console.log("submit_div");
+			console.log(submit_div);
+			submit_div[0].path=path;
+			submit_div.on('click',submit_edit);
+			console.log("clicked");
+		});
+	});
+</script>
 {% for vid in videos %}
 	<div class="video_div">
-		<a href="{{vid.html_url}}">
-			<img class="video_img" src="{{vid.thumbnail_url}}"/>
-		</a>
-		<button class="playlist_add" id="{{vid.name}}">
-			Add to Playlist	
-		</button>
+		<div class="video_grid">
+			<a href="{{vid.html_url}}">
+				<img class="video_img" src="{{vid.thumbnail_url}}"/>
+			</a>
+			<div class="video_description">
+				<div class="video_name_text">
+					{{vid.name}}
+				</div>
+		
+				<div class="video_rating">
+					Rating: {{vid.video_data.rating}}
+				</div>
+				<div class="video_description_text">
+					Description: {{vid.video_data.description}}
+				</div>
+				<div class="video_buttons">
+					<img class="playlist_add" id="{{vid.path}}" src="/static/icons/add.svg">
+					</img>
+					<img class="video_info" id="{{vid.path}}" src="/static/icons/info.svg">
+					</img>
+				</div>
+			</div>
+		</div>	
 	</div>
 {% endfor %}
-</div>

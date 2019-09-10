@@ -11,10 +11,11 @@ use actix_files::NamedFile;
 use tera::Tera;
 use serde::{Serialize,Deserialize};
 mod users;
+const DB_PATH:&str = "db.json";
 #[derive(Clone)]
 pub struct State{
     pub config_file: config::Config,
-    pub video_array: Vec<videos::Video>,
+    pub video_db: videos::VideoDB,
     pub users: users::UserVec,
     pub setup_bool:bool,
     pub use_ssl:bool,//whether or not to redirect to ssl
@@ -22,6 +23,11 @@ pub struct State{
 #[derive(Clone,Serialize)]
 pub struct UserOut{
     pub username:String
+}
+#[derive(Clone,Serialize,Deserialize)]
+pub struct VideoEditStruct{
+    pub path:String,
+    pub data:videos::VideoRatingData,
 }
 impl State{
     //returns cookie if user is suscessfully authenticated
@@ -47,44 +53,72 @@ impl State{
         return Err("not authorized".to_string());
     }
     fn _add_user(&mut self, username:String,password:String)->Result<String,String>{
-        self.users.add_user(username,password);
+        let user_res = self.users.add_user(username,password);
+        if user_res.is_err(){
+            return Err(user_res.err().unwrap());
+        }
         let res = self.write();
         return res;
     }
-	pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
+    pub fn edit_videodata(&mut self,token:String,to_change: VideoEditStruct)->Result<String,String>{
+        if self.is_auth(token){
+            return self.video_db.edit_video_data_path(to_change.path,to_change.data);
+        }else{
+            return Err("not authorized".to_string());
+        }
+    }
+    pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
         if self.is_auth(user_token){ 
-		    let mut out:Vec<videos::VideoHtml>=Vec::new();
-        
-		    for vid in self.video_array.clone(){
-			    out.push(vid.get_vid_html("/vid_html/".to_string(),"/thumbnails/".to_string()));	
-
-		    }
-		    return Ok(out);
+            return Ok(self.video_db.get_vid_html_vec("/vid_html/".to_string(),"/thumbnails/".to_string()));
         }
         else{
 		    return Err("not authorized".to_string());
         }
-	}
+    }
 	pub fn get_vid_html(&self,user_token:String,video_name:String)->Result<videos::VideoHtml,String>{
 		if self.users.verify_token(user_token){
-			for vid in self.video_array.clone(){
-				if vid.name==video_name{
-					return Ok(vid.get_vid_html("/videos/".to_string(),"/thumbnails/".to_string()));
-				}
-			}
-			return Err("not found".to_string());
+                    let res = self.video_db.get_vid_html("/videos/".to_string(),
+                        "/thumbnails/".to_string(),video_name);
+                    if res.is_ok(){
+                        return Ok(res.ok().unwrap());
+                    }
+                    else{
+                        return Err(res.err().unwrap());
+                    }
 		}else{
 			return Err("not authorized".to_string())
 		}
 	}
-        pub fn get_vid_path(&self,user_token:String,vid_name:String)->Result<String,String>{
+        pub fn get_vid_html_from_path(&self, user_token:String,video_path:String)->Result<videos::VideoHtml,String>{
             if self.is_auth(user_token){
-                for vid in self.video_array.clone(){
-                    if vid.name==vid_name{
-                        return Ok(vid.get_path());
-                    }
+
+                return self.video_db.get_vid_html_from_path("/videos/".to_string(),"/thumbnails/".to_string(),video_path)
+            }else{
+                return Err("not authorized".to_string());
+            }
+        }
+        pub fn add_playlist(&mut self,user_token:String,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+            if self.is_auth(user_token){
+                return self.video_db.add_playlist(playlist_name,video_paths);
+            }
+            return Err("not authorized".to_string());
+        }
+        pub fn get_playlist_all(&self,user_token:String)->Result<Vec<videos::HtmlPlaylist>,String>{
+            if self.is_auth(user_token){
+                return Ok(self.video_db.get_playlist_all("/videos/".to_string(),"/thumbnails/".to_string()));
+            }else{
+                return Err("not authorized".to_string());
+            }
+        }
+        pub fn get_vid_path(&self,user_token:String,video_name:String)->Result<String,String>{
+            if self.is_auth(user_token){
+                let res = self.video_db.get_vid_path(video_name);
+                if res.is_ok(){
+                    return Ok(res.ok().unwrap());
                 }
-                return Err("file not found".to_string());
+                else{
+                    return Err(res.err().unwrap());
+                }
             }else{
                 return Err("not authorized".to_string());
             }
@@ -104,8 +138,13 @@ impl State{
             if !res.is_ok(){
                 return Err("failed to write config".to_string());
             }
-            self.video_array=videos::get_videos(self.config_file.videos.video_path.clone(),
-                self.config_file.videos.thumbnails.clone(),thumb_res);
+            let video_res = videos::new(self.config_file.videos.video_path.clone(),
+                self.config_file.videos.thumbnails.clone(),DB_PATH.to_string(),thumb_res);
+            if video_res.is_ok(){
+                self.video_db=video_res.ok().unwrap();
+            }else{
+                return Err(video_res.err().unwrap());
+            }
             return Ok("sucess".to_string());
         }
         pub fn set_thumb_res_auth(&mut self,token:String,thumb_res:u32)->Result<String,String>{
@@ -133,7 +172,12 @@ impl State{
                 self.setup_bool=true;
                 return Ok("Sucess".to_string());
             }else{
-                return Err("failed to add user".to_string());
+                if reload_res.is_err(){
+                    return Err(reload_res.err().unwrap());
+                }
+                else{
+                    return Err(add_user_res.err().unwrap());
+                }
             }
 
         }
@@ -142,8 +186,13 @@ impl State{
             self.config_file.videos.video_path=video_dir.clone();
             self.config_file.videos.thumbnails="thumbnails".to_string();
             self.config_file.thumb_res=thumb_res;
-            self.video_array=videos::get_videos(video_dir.clone(),"thumbnails".to_string(),
-                    thumb_res);
+            let video_res = videos::new(video_dir.clone(),"thumbnails".to_string(),
+                DB_PATH.to_string(),thumb_res);
+            if video_res.is_ok(){
+                self.video_db=video_res.ok().unwrap()
+            }else{
+                return Err(video_res.err().unwrap());
+            }
             return Ok("done".to_string());
         }
         pub fn get_users(&self,token:String)->Result<Vec<UserOut>,String>{
@@ -189,37 +238,40 @@ lazy_static!{
 struct StartupOptions{
     use_ssl:bool,//whether or not to redirect to https
 }
-fn init_state(startup_otions:StartupOptions)->State{
+fn init_state(startup_otions:StartupOptions)->Result<State,String>{
     let temp_cfg=config::load_config();
     if temp_cfg.is_ok(){
         let cfg = temp_cfg.ok().unwrap();
         let vid_dir=cfg.videos.video_path.clone();
-
-        let mut out=State{
-            config_file: cfg.clone(),
-            video_array: videos::get_videos(vid_dir,"thumbnails".to_string(),cfg.thumb_res),
-            users: users::new(),
-            setup_bool: true,
-            use_ssl:startup_otions.use_ssl,
-        };
-        for user in cfg.users.clone(){
-            let res = out.users.load_user(user.username,user.passwd);
-            if res.is_err(){
-                println!("failed to add user");
+        let video_res = videos::new(vid_dir,"thumbnails".to_string(),
+            DB_PATH.to_string(),cfg.thumb_res);
+        if video_res.is_ok(){
+            let mut out=State{
+                config_file: cfg.clone(),
+                video_db: video_res.ok().unwrap(),
+                users: users::new(),
+                setup_bool: true,
+                use_ssl:startup_otions.use_ssl,
+            };
+            for user in cfg.users.clone(){
+                let res = out.users.load_user(user.username,user.passwd);
+                if res.is_err(){
+                    println!("failed to add user");
+                }
             }
+            return Ok(out);
+        }else{
+            return Err(video_res.err().unwrap());
         }
-
-        return out;
+    }else{
+        return Err(temp_cfg.err().unwrap());
     }
-    println!("error: {}",temp_cfg.clone().err().unwrap());
-    return empty_state(startup_otions);
-
 }
 //returns an empty state
 fn empty_state(startup_otions:StartupOptions)->State{
     return State{
         config_file: config::empty(),
-        video_array: [].to_vec(),
+        video_db: videos::empty(),
         users: users::new(),
         setup_bool: false,
         use_ssl: startup_otions.use_ssl
@@ -228,14 +280,13 @@ fn empty_state(startup_otions:StartupOptions)->State{
 fn make_ssl_key(){
     if !Path::new("key.pem").exists() || !Path::new("cert.pem").exists(){
         println!("making ssl");
-        let res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
+        let _res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
             .arg("-nodes").arg("-keyout").arg("key.pem").arg("-out").arg("cert.pem")
             .arg("-days").arg("365").arg("-subj").arg("/CN=localhost").output();
         println!("done with ssl");
     }
 }
 pub fn run_webserver(state_in:&mut State,use_ssl:bool){
-    let video_dir = state_in.get_vid_dir();
     let thumb_dir= state_in.get_thumb_dir();
     let temp_state = RwLock::new(state_in.clone());
     let shared_state = web::Data::new(temp_state);
@@ -266,9 +317,14 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/", web::get().to(index))
             .route("/login",web::get().to(login_html))
             .route("/setup",web::get().to(setup))
+            .route("/playlists",web::get().to(playlists))
             .route("/api/setup",web::post().to(api_setup))
             .route("/api/logout",web::post().to(logout_api))
             .route("/api/settings",web::post().to(settings_api))
+            .route("/api/add_playlist",web::post().to(add_playlist_api))
+            .route("/api/get_playlist_all",web::get().to(get_playlist_api))
+            .route("/api/get_video",web::post().to(get_video))
+            .route("/api/edit_video",web::post().to(edit_video))
             .route("/videos/{video_name}",web::get().to(video_files))
             .service(actix_files::Files::new("/static","./static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
@@ -293,8 +349,13 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
 }
 //starts the web server, if use_ssl is true than all requests will be sent through https
 pub fn init(use_ssl:bool){
-    let mut state_struct = init_state(StartupOptions{use_ssl:use_ssl});
-    run_webserver(&mut state_struct,use_ssl);
+    let state_res = init_state(StartupOptions{use_ssl:use_ssl});
+    if state_res.is_ok(){
+        run_webserver(&mut state_res.ok().unwrap(),use_ssl);
+    }else{
+        let mut state = empty_state(StartupOptions{use_ssl:use_ssl});
+        run_webserver(&mut state,use_ssl);
+    }
 }
 #[derive(Deserialize)]
 struct UserReq{
@@ -335,9 +396,50 @@ fn add_user(info:web::Json<UserReq>,data:web::Data<RwLock<State>>,session:Sessio
     }
     return Ok("failed".to_string());
 }
+pub fn edit_video(info:web::Json<VideoEditStruct>,data:web::Data<RwLock<State>>,session: Session)
+    ->Result<String>{
+        let mut state_data= data.write().unwrap();
+        let token_res = session.get("token");
+        if token_res.is_ok(){
+            println!("info: {}",info.path);
+            let res_out = state_data.edit_videodata(token_res.unwrap().unwrap(),info.clone());
+            if res_out.is_ok(){
+                return Ok(res_out.ok().unwrap());
+            }else{
+                return Ok(res_out.err().unwrap());
+            }
+        }else{
+            return Ok("not authorized".to_string());
+        }
+    }
+
 #[derive(Serialize)]
 pub struct UsersApi{
     users:Vec<UserOut>
+}
+
+#[derive(Deserialize,Serialize)]
+pub struct GetVideo{
+    video_path:String
+}
+pub fn get_video(info:web::Json<GetVideo>,
+                 data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let state = data.read().unwrap();
+        let token = token_res.unwrap().unwrap();
+        let video_res = state.get_vid_html_from_path(token,info.video_path.clone());
+        if video_res.is_ok(){
+            let video = video_res.ok().unwrap();
+            let parsed_string = serde_json::to_string(&video).ok().unwrap();
+            return Ok(parsed_string);
+        }else{
+            return Ok(video_res.err().unwrap());
+        }
+    }else{
+        return Ok("token not found".to_string());
+    }
+
 }
 pub fn get_users(data: web::Data<RwLock<State>>,session:Session)->impl Responder{
     let token = session.get("token");
@@ -409,7 +511,7 @@ pub fn index(data:web::Data<RwLock<State>>, session:Session)->impl Responder{
     HttpResponse::Ok().body("".to_string())
         
 }
-pub fn setup(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+pub fn setup(data:web::Data<RwLock<State>>)->impl Responder{
         let render_data = TERA.render("setup.jinja2",&EmptyStruct{}); 
         let state = data.read();
         if render_data.is_ok() && !state.unwrap().is_setup(){
@@ -424,6 +526,22 @@ pub fn settings(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
     if token_res.is_ok(){
         let state = data.read();
         if render_data.is_ok() && state.unwrap().is_auth(token_res.unwrap().unwrap()){
+            return HttpResponse::Ok().body(render_data.unwrap());
+        }else{
+            return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
+        }
+    }else{
+        return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
+    }
+}
+pub fn playlists(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+
+    let render_data=TERA.render("playlists.jinja2",&EmptyStruct{});
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let state = data.read();
+        if render_data.is_ok() && state.unwrap().is_auth(token_res.unwrap().unwrap()){
+            println!("rendered playlists");
             return HttpResponse::Ok().body(render_data.unwrap());
         }else{
             return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
@@ -474,16 +592,59 @@ struct SetupStruct{
     thumb_res:u32,
 }
 fn api_setup(info: web::Json<SetupStruct>, data:web::Data<RwLock<State>>,
-             session:Session)->Result<String>{
+             _session:Session)->Result<String>{
     let mut state_data = data.write().unwrap();
     let res =  state_data.setup(info.video_dir.clone(),info.username.clone(),info.password.clone(),info.thumb_res);
     if res.is_ok(){
-        return Ok("Sucess".to_string());
+        return Ok("success".to_string());
     }else{
         return Ok(res.err().unwrap());
     }
 }
-fn logout_api(into: web::Json<EmptyStruct>,session:Session,data:web::Data<RwLock<State>>)->Result<String>{
+#[derive(Serialize,Deserialize)]
+struct AddPlaylist{
+    name:String,//name of playlist
+    videos:Vec<String>,//vec with video path names
+}
+fn add_playlist_api(info:web::Json<AddPlaylist>,data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    let mut state_data = data.write().unwrap();
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let res = state_data.add_playlist(token,info.name.clone(),info.videos.clone());
+        if res.is_ok(){
+            return Ok("success".to_string());
+        }else{
+            return Ok(res.err().unwrap());
+        }
+    }else{
+        return Ok("not authorized".to_string());
+    }
+    
+}
+fn get_playlist_api(data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+
+    let mut state_data = data.write().unwrap();
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let playlist_res = state_data.get_playlist_all(token);
+        if playlist_res.is_ok(){
+            let out_str_res = serde_json::to_string(&playlist_res.ok().unwrap());
+            if out_str_res.is_ok(){
+                return Ok(out_str_res.ok().unwrap());
+            }else{
+                return Ok(out_str_res.err().unwrap().to_string());
+            }
+            
+        }else{
+            return Ok(playlist_res.err().unwrap());
+        }
+    }else{
+        return Ok("not authorized".to_string());
+    }
+}
+fn logout_api(session:Session,data:web::Data<RwLock<State>>)->Result<String>{
     let mut state_data=data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok(){
@@ -504,7 +665,6 @@ struct EmptyStruct{
 }
 pub fn login_html(data:web::Data<RwLock<State>>, session:Session) -> impl Responder{
     println!("ran redirect");
-    let state_data = data.read().unwrap();
     let html = TERA.render("login.jinja2",&EmptyStruct{});
     if html.is_ok(){
         return HttpResponse::Ok().body(html.unwrap());
@@ -547,18 +707,25 @@ pub fn video_files(data:web::Data<RwLock<State>>,session:Session,
         let token = token_res.ok().unwrap().unwrap();
         let file_path = state_data.get_vid_path(token,vid_name);
         if file_path.is_ok(){
-            let file_res = NamedFile::open(file_path.unwrap());
+            let file_path_out:String = file_path.unwrap();
+
+            println!("file path: {}",file_path_out);
+            let file_res = NamedFile::open(file_path_out);
             if file_res.is_ok(){
                 return file_res.unwrap();
             }
             else{
+                println!("file error: {}",file_res.err().unwrap());
                 return NamedFile::open("empty.txt").unwrap();
 
             }
+        }else{
+            println!("file error: {}",file_path.err().unwrap());
+            return NamedFile::open("empty.txt").unwrap();
         }
     }else{
+        println!("video error: {}",token_res.err().unwrap());
         return NamedFile::open("empty.txt").unwrap();
     }
 
-        return NamedFile::open("empty.txt").unwrap();
 }
