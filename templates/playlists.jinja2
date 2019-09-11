@@ -20,7 +20,20 @@
 			//SETTING GLOBALS
 
 			this.playlist = playlist;
-			this.playlistDiv="<div class=playlist id='{PLAYLIST_NAME}'><img src='{THUMB_URL}'class=thumbnail></img>{PLAYLIST_NAME}</div>";
+			this.playlistDiv=
+			"<div class=playlist id='{PLAYLIST_NAME}'>"+
+				"<img src='{THUMB_URL}'class=thumbnail></img>"+
+				"<div class='playlist_description'>"+	
+					"<div class='PLAYLIST_NAME'>"+	
+						"{PLAYLIST_NAME}"+
+					"</div>"+
+					"<div class='spacer'>"+
+					"</div>"+
+					"<div class='playlist_buttons'>"+
+						'<img class="playlist_add" id="{vid.path}" src="/static/icons/add.svg">'+
+					"</div>"+
+				"</div>"+
+			"</div>";
 
 			console.log("This");
 			console.log(this);
@@ -226,3 +239,4 @@ var LAST_VOLUME=1;
 //gets playlists:
 
 </script>
+

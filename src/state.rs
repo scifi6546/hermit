@@ -540,10 +540,16 @@ pub fn playlists(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
     let token_res = session.get("token");
     if token_res.is_ok(){
         let state = data.read();
-        if render_data.is_ok() && state.unwrap().is_auth(token_res.unwrap().unwrap()){
+        if render_data.is_ok(){
+            if state.unwrap().is_auth(token_res.unwrap().unwrap()){
+                return HttpResponse::Ok().body(render_data.unwrap());
+            }else{
+                return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
+            }
             println!("rendered playlists");
             return HttpResponse::Ok().body(render_data.unwrap());
         }else{
+            println!("failed to render playlists"); 
             return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
         }
     }else{

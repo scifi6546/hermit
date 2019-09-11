@@ -58,6 +58,8 @@ html{
 	background-color: #242327;
 	-webkit-text-size-adjust: none;
 	flex-grow: 1;
+	width: 100%;
+	flex-grow: 2;
 }
 .video_buttons{
 	display: grid;
@@ -68,7 +70,7 @@ html{
 	padding: 10px;
 	display: grid;
 	margin: 10px;
-	grid-template-columns: 33.33% 33.33% 33.33%;
+	grid-template-columns: 25% 25% 25% 25%;
 	grid-column-gap: 10px;
 	justify-items: center;
 	grid-row-gap: 10px;
@@ -78,8 +80,11 @@ html{
 	color: white;
 	display: block;
 	background-color: #5a576c;
-	padding: 5px;
 	margin: 10px;
+	width: 100%;
+	display: flex;
+	flex-flow: row;
+	height: 200px;
 }
 
 .playlist_name{
@@ -136,6 +141,9 @@ html{
 	grid-template-columns: auto 400px;
 	grid-template-rows: 1fr;
 }
+.playlist_description{
+
+}
 .video_preview_div{
 	/*! display: grid; */
 	overflow-y: scroll;
@@ -147,6 +155,7 @@ html{
 
 	color: #fff;
 }
+
 .preview_div_selected{
 	background-color: #777d95;
 	display: grid;
@@ -190,6 +199,9 @@ html{
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+.thumbnail{
+
+}
 @media only screen and (max-width: 700px){
 	
 	[class*="body"]{
@@ -212,6 +224,8 @@ html{
 		padding: 5px;
 	}
 }
+
+
 
 
 
