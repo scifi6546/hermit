@@ -68,7 +68,7 @@ html{
 	padding: 10px;
 	display: grid;
 	margin: 10px;
-	grid-template-columns: 33.33% 33.33% 33.33%;
+	grid-template-columns: auto auto auto;
 	grid-column-gap: 10px;
 	justify-items: center;
 	grid-row-gap: 10px;
@@ -190,6 +190,9 @@ html{
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
+.thumbnail{
+	width: 100%;
+}
 @media only screen and (max-width: 700px){
 	
 	[class*="body"]{
@@ -212,6 +215,7 @@ html{
 		padding: 5px;
 	}
 }
+
 
 
 
