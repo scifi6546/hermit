@@ -1,7 +1,13 @@
 #API
 ## Login
 first login by sending a post request to /api/login
-the request parameters are {username:{USERNAME,password}:{PASSWORD}}
+the request parameters are 
+```
+{
+	username:{USERNAME},
+	password:{PASSWORD}
+}
+```
 the webserver then gives a valid token
 
 ## Getting Videos
