@@ -624,7 +624,7 @@ fn add_playlist_api(info:web::Json<AddPlaylist>,data:web::Data<RwLock<State>>,se
 }
 fn get_playlist_api(data:web::Data<RwLock<State>>,session:Session)->Result<String>{
 
-    let mut state_data = data.write().unwrap();
+    let state_data = data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok(){
         let token = token_res.ok().unwrap().unwrap();
@@ -663,7 +663,7 @@ fn logout_api(session:Session,data:web::Data<RwLock<State>>)->Result<String>{
 struct EmptyStruct{
 
 }
-pub fn login_html(data:web::Data<RwLock<State>>, session:Session) -> impl Responder{
+pub fn login_html(_data:web::Data<RwLock<State>>, session:Session) -> impl Responder{
     println!("ran redirect");
     let html = TERA.render("login.jinja2",&EmptyStruct{});
     if html.is_ok(){

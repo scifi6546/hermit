@@ -1,8 +1,5 @@
 use serde::{Deserialize,Serialize};
 use std::path::Path;
-use std::thread;
-use std::sync::mpsc::channel;
-use std::sync::{Arc,Mutex,RwLock};
 
 mod thumbnail;
 mod db;
@@ -46,11 +43,16 @@ impl VideoDB{
         for file in self.database.iter_mut(){
             //make thumbnail 
             if file.is_video(){
-                let thumb = thumbnail::make_thumb(file.file_path.clone(),
+                let thumb_res = thumbnail::make_thumb(file.file_path.clone(),
                     self.thumb_dir.clone(),self.thumb_res.clone());
+                if thumb_res.is_ok(){
+                    let thumb=thumb_res.unwrap();
                     file.metadata=db::Metadata{thumbnail_path:thumb.path,thumbnail_name:thumb.name,
                         thumbnail_res:thumb.resolution,video_data:file.metadata.video_data.clone()
                     };
+                }else{
+                    return Err(thumb_res.err().unwrap());
+                }
                 
             }
         }
@@ -207,4 +209,7 @@ pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)-
 }
 pub fn empty()->VideoDB{
     return VideoDB{database:db::empty(),thumb_dir:"".to_string(),thumb_res:0};
+}
+#[cfg(test)]
+mod test{
 }
