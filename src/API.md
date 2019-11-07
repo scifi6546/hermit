@@ -27,6 +27,28 @@ the request returns
 	}
 }
 ```
+## Getting video from name
+send a post request with data
+```
+{
+   video_path:String
+}
+```
+returns 
+```
+{
+	name:{name},
+	url:{url of file},
+	thumbnail_url:{url of thumbnail},
+	html_url:{url of webpage to watch video},
+	path:{video path on disk},
+	video_data:{
+		star_rating:{number},
+		rating{Pg rating},
+		description:{description of video}
+	}
+}
+```
 ## Getting a list of playlists
 send a get request to /api/get_playlist_all
 
