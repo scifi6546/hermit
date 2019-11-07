@@ -58,13 +58,15 @@ impl VideoDB{
         }
         return Ok("sucessfully made thumbnails".to_string());
     }
-    pub fn get_vid_html_vec(&self,path_base:String,thumbnail_base:String)->Vec<VideoHtml>{
+    pub fn get_vid_html_vec(&self,path_base:String,html_path_base:String,thumbnail_base:String)->Vec<VideoHtml>{
         let mut vec_out:Vec<VideoHtml>=Vec::new();
         for file in self.database.iter(){
             if file.is_video(){
                 let name = file.name.clone();
-                let mut url = path_base.clone();
-                url.push_str(&name);
+                let mut file_url = path_base.clone();
+                file_url.push_str(&name);
+                let mut html_url = html_path_base.clone();
+                html_url.push_str(&name);
                 
                 let video_data = VideoRatingData{rating:file.metadata.video_data.rating.clone(),
                     star_rating:file.metadata.video_data.star_rating,
@@ -72,9 +74,12 @@ impl VideoDB{
                 println!("video_description: {}",video_data.description);
                 let mut thumbnail_name=thumbnail_base.clone();
                 thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
-                vec_out.push(VideoHtml{name:file.name.clone(),
-                    url:url.clone(),thumbnail_url:thumbnail_name,
-                    html_url:url.clone(),path:file.file_path.clone(),
+                vec_out.push(VideoHtml{
+                    name:file.name.clone(),
+                    url:file_url.clone(),
+                    thumbnail_url:thumbnail_name,
+                    html_url:html_url.clone(),
+                    path:file.file_path.clone(),
                     video_data:video_data,
                 });
             }

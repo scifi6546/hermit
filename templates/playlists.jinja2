@@ -13,14 +13,21 @@
 <div class="body">
 </div>
 <script>
-
+//number of playlists on a single row.
+const HORIZONTAL_PLAYLIST=3;
 	class Playlist{
 		//input: {"name":"foo","videos":[VIDEO_OBJ]}
-		constructor(playlist){
+		constructor(playlist,index){
 			//SETTING GLOBALS
-
+			this.index=index;
 			this.playlist = playlist;
-			this.playlistDiv="<div class=playlist id='{PLAYLIST_NAME}'><img src='{THUMB_URL}'class=thumbnail></img>{PLAYLIST_NAME}</div>";
+			this.playlistDiv=
+				"<div class=playlist id='{PLAYLIST_NAME}'>"+
+					"<img src='{THUMB_URL}'class=thumbnail></img>"+
+					
+					"<img class='playlist_edit' id='edit_{PLAYLIST_NAME}'"+
+						"src='/static/icons/add.svg'></img>"+
+				"{PLAYLIST_NAME}</div>";
 
 			console.log("This");
 			console.log(this);
@@ -32,13 +39,27 @@
 	
 			$(".body").append(temp_str);
 			this.playlist_div_html=document.getElementById(playlist.name);
+			this.edit_bttn=$(this.playlist_div_html).children(".playlist_edit");
+			this.thumbnail=$(this.playlist_div_html).children(".thumbnail");
+			console.log("thumbnail");
+			console.log(this.thumbnail);
+			console.log("edit_bttn");
+			console.log(this.edit_bttn);
 			//Again I am sorry. I am setting videos on playlist_div_html inorder to
 			//acces video data
 			// Setting playlist to this which is playlist passed in through context
 			this.playlist_div_html.playlist = this.playlist;
-			this.playlist_div_html.onclick=function(input){
+			this.thumbnail[0].onclick=function(input){
 				destroy_playlist_previews(this.playlist);
 			}
+			this.edit_bttn[0].playlist=this.playlist;
+			this.edit_bttn[0].index=this.index;
+			this.edit_bttn[0].onclick=this.edit_playlist;
+		}
+		edit_playlist(){
+			console.log("edit_bttn this:");
+			console.log(this);	
+			this.play_edit = new PlaylistEdit(this.playlist,this.index);
 		}
 		destroy(){
 			$(this.playlist_div_html).remove();	
@@ -173,6 +194,37 @@ class PlaylistPlay{
 		$(".playlist_video")[0].volume=this.volume;
 	}
 }
+class PlaylistEdit{
+	constructor(playlist,index){
+		this.html=
+			"</div>"+"</div>"+
+			"<div class='playlist_edit'>"+
+				"Hello world"+
+			"</div>"+
+			"<div class='body'>"	
+			;
+		this.playlist=playlist;
+			console.log(playlist);
+			console.log("index: "+index);
+
+		let temp = Math.floor((index)/(HORIZONTAL_PLAYLIST))+1;
+		
+		console.log("temp: "+temp);
+		this.put_index=temp*(HORIZONTAL_PLAYLIST+1.0-1.0);
+		console.log("put index");
+		console.log(this.put_index);
+		let body_children = $(".body").children();
+		console.log("body children");
+		console.log(body_children);
+
+		var html_item = body_children[this.put_index].outerHTML;
+		html_item=html_item+"lol";
+		html_item=html_item+this.html;
+		console.log("html");
+		console.log(html_item);
+		body_children[this.put_index].outerHTML=html_item;
+	}
+}
 function random_num(max,last){
 	let rand_num_int = Math.floor(Math.random()*(max+1));
 	console.log("rand int")
@@ -208,7 +260,7 @@ $.ajax({url:"/api/get_playlist_all",type:"GET",complete:function(input){
 	let plays = JSON.parse(input.responseText);
 	console.log(plays);
 	for(i in plays){
-		playlist_objs.push(new Playlist(plays[i]));
+		playlist_objs.push(new Playlist(plays[i],i));
 	}
 }});
 playlist_play=""

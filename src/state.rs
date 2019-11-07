@@ -12,6 +12,8 @@ use tera::Tera;
 use serde::{Serialize,Deserialize};
 mod users;
 const DB_PATH:&str = "db.json";
+const VIDEO_WEB_PATH:&str = "/files/videos/";
+const THUMB_WEB_PATH:&str = "/files/thumbnails/";
 #[derive(Clone)]
 pub struct State{
     pub config_file: config::Config,
@@ -67,9 +69,10 @@ impl State{
             return Err("not authorized".to_string());
         }
     }
+    
     pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
         if self.is_auth(user_token){ 
-            return Ok(self.video_db.get_vid_html_vec("/vid_html/".to_string(),"/thumbnails/".to_string()));
+            return Ok(self.video_db.get_vid_html_vec(VIDEO_WEB_PATH.to_string(),"/vid_html/".to_string(),THUMB_WEB_PATH.to_string()));
         }
         else{
 		    return Err("not authorized".to_string());
@@ -77,8 +80,8 @@ impl State{
     }
 	pub fn get_vid_html(&self,user_token:String,video_name:String)->Result<videos::VideoHtml,String>{
 		if self.users.verify_token(user_token){
-                    let res = self.video_db.get_vid_html("/videos/".to_string(),
-                        "/thumbnails/".to_string(),video_name);
+                    let res = self.video_db.get_vid_html(VIDEO_WEB_PATH.to_string(),
+                        THUMB_WEB_PATH.to_string(),video_name);
                     if res.is_ok(){
                         return Ok(res.ok().unwrap());
                     }
@@ -326,8 +329,10 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/get_video",web::post().to(get_video))
             .route("/api/edit_video",web::post().to(edit_video))
             .route("/videos/{video_name}",web::get().to(video_files))
+            .route("/files/videos/{video_name}",web::get().to(video_files))
             .service(actix_files::Files::new("/static","./static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
+            .service(actix_files::Files::new("/files/thumbnails",thumb_dir.clone()))
 			
     });
     if use_ssl{
