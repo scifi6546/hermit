@@ -1,4 +1,4 @@
-#API
+# API
 ## Login
 first login by sending a post request to /api/login
 the request parameters are 
@@ -24,6 +24,18 @@ the request returns
 		star_rating:{number},
 		rating{Pg rating},
 		description:{description of video}
+	}
+}
+```
+## Editing Videos
+Send a POST request to /api/edit_video with the following data
+```
+{
+	path: string
+	data:{
+		star_rating:u32
+		rating:string
+		description:string
 	}
 }
 ```
