@@ -80,7 +80,7 @@ impl UserVec{
         }
         return token;
     }
-    //verifies a token
+    //verifies a token and makes sure user is authorized
     pub fn verify_token(&self,token:String)->bool{
         if token==""{
             return false;

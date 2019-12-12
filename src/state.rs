@@ -322,8 +322,10 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/setup",web::get().to(setup))
             .route("/playlists",web::get().to(playlists))
             .route("/api/setup",web::post().to(api_setup))
+            .route("/api/is_setup",web::get().to(api_is_setup))
             .route("/api/logout",web::post().to(logout_api))
             .route("/api/settings",web::post().to(settings_api))
+            .route("/api/logged_in",web::get().to(get_logged_in))
             .route("/api/add_playlist",web::post().to(add_playlist_api))
             .route("/api/get_playlist_all",web::get().to(get_playlist_api))
             .route("/api/get_video",web::post().to(get_video))
@@ -469,11 +471,45 @@ pub fn get_users(data: web::Data<RwLock<State>>,session:Session)->impl Responder
     }
 }
 fn get_videos(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
-	let token = session.get("token").unwrap().unwrap();
-	let state_data = data.read().unwrap();
-	let videos=state_data.get_videos(token);
-	let out=serde_json::to_string(&videos).unwrap();
-	return HttpResponse::Ok().body(out);	
+	let token_res = session.get("token");
+        if token_res.is_ok(){
+            let token = token_res.unwrap().unwrap();
+	    let state_data = data.read().unwrap();
+	    let videos=state_data.get_videos(token);
+	    let out=serde_json::to_string(&videos).unwrap();
+	    return HttpResponse::Ok().body(out);	
+        }else{
+            return HttpResponse::Unauthorized().body("");
+        }
+}
+#[derive(Serialize)]
+struct loggedIn{
+    logged_in:String
+}
+pub fn get_logged_in(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+	let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token_t = token_res.unwrap();
+        if token_t.is_some(){
+            let token = token_t.unwrap();
+            let state_data=data.read().unwrap();
+            let is_auth = state_data.is_auth(token);
+            if is_auth{
+                let json = loggedIn{logged_in:"true".to_string()};
+                return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
+            }else{
+                let json = loggedIn{logged_in:"false".to_string()};
+                return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
+            }
+        }else{
+            let json = loggedIn{logged_in:"false".to_string()};
+            return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
+
+        }
+    }else{
+        let json = loggedIn{logged_in:"false".to_string()};
+        return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
+    }
 }
 #[derive(Serialize)]
 struct Index{
@@ -515,6 +551,20 @@ pub fn index(data:web::Data<RwLock<State>>, session:Session)->impl Responder{
 
     HttpResponse::Ok().body("".to_string())
         
+}
+#[derive(Serialize,Deserialize)]
+struct IsSetupStruct{
+    is_setup:String,
+}
+pub fn api_is_setup(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+    let state_data = data.read().unwrap();
+    if state_data.is_setup(){
+        let setup = IsSetupStruct{is_setup:"true".to_string()};
+        return HttpResponse::Ok().body(serde_json::to_string(&setup).unwrap());
+    }else{
+        let setup = IsSetupStruct{is_setup:"false".to_string()};
+        return HttpResponse::Ok().body(serde_json::to_string(&setup).unwrap());
+    }
 }
 pub fn setup(data:web::Data<RwLock<State>>)->impl Responder{
         let render_data = TERA.render("setup.jinja2",&EmptyStruct{}); 

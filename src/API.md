@@ -51,6 +51,22 @@ returns
 ```
 ## Getting a list of playlists
 send a get request to /api/get_playlist_all
+# Finding out if the user is logged in
+send a get to request to /api/logged_in
+returns
+```
+{
+		logged_in: {"true" or "false"}
+}
+```
+## Getting if user is setup
+send a get request to /api/is_setup
+returns:
+```
+{
+		is_setup: {"true" or "false"}
+}
+
 
 
 
