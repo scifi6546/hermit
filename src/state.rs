@@ -29,7 +29,7 @@ pub struct UserOut{
 #[derive(Clone,Serialize,Deserialize)]
 pub struct VideoEditStruct{
     pub path:String,
-    pub data:videos::VideoRatingData,
+    pub data:videos::VideoEditData,
 }
 impl State{
     //returns cookie if user is suscessfully authenticated
@@ -408,7 +408,7 @@ pub fn edit_video(info:web::Json<VideoEditStruct>,data:web::Data<RwLock<State>>,
         let mut state_data= data.write().unwrap();
         let token_res = session.get("token");
         if token_res.is_ok(){
-            println!("info: {}",info.path);
+            //println!("info: {}",info);
             let res_out = state_data.edit_videodata(token_res.unwrap().unwrap(),info.clone());
             if res_out.is_ok(){
                 return Ok(res_out.ok().unwrap());

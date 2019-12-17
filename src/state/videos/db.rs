@@ -82,6 +82,7 @@ pub struct FileDB{
 }
 fn new_metadata()->Metadata{
     return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string(),
+        
         thumbnail_res:0,video_data:VideoData{
             star_rating:0,
             rating: "".to_string(),
@@ -106,6 +107,7 @@ fn file_data_from_path(file_path:String)->Result<FileData,String>{
 impl FileDB{
     fn write(&mut self)->Result<String,String>{
         let output = serde_json::to_string(self);
+        println!("{}",self);
         if output.is_ok(){
         let file_res = File::create(self.db_path.clone());
             if file_res.is_ok(){
@@ -166,10 +168,14 @@ impl FileDB{
             return Err(res.err().unwrap());
         }
     }
-    pub fn edit_videodata(&mut self,path:String,change_to: VideoData)->Result<String,String>{
-        for video in self.iter_mut(){
+    //edit video data using string
+    pub fn edit_videodata(&mut self,path:String,change_to: VideoData,name:String)->Result<String,String>{
+        println!("editing path");
+        println!("video star rating: {}",change_to.star_rating.clone());
+        for mut video in self.iter_mut(){
             if video.file_path==path{
                 video.metadata.video_data=change_to;
+                video.name=name;
                 println!("edit video: {}",video.file_path);
                 println!("video description: {}",video.metadata.video_data.description);
                 let res = self.write();

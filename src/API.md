@@ -36,6 +36,7 @@ Send a POST request to /api/edit_video with the following data
 		star_rating:u32
 		rating:string
 		description:string
+		name:string
 	}
 }
 ```
