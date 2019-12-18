@@ -64,6 +64,26 @@ returns
 ```
 ## Getting a list of playlists
 send a get request to /api/get_playlist_all
+returns ```json
+{
+	name:{name of playlist}
+	videos:[
+		{
+			name:
+			url:
+			thumbnail_url:
+			html_url:
+			path:
+			video_data:{
+				star_rating:
+				rating:
+				description:
+			}
+
+	]
+		
+	
+}
 # Finding out if the user is logged in
 send a get to request to /api/logged_in
 returns
@@ -79,7 +99,6 @@ returns:
 {
 		is_setup: {"true" or "false"}
 }
-
 
 
 
