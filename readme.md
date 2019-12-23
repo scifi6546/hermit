@@ -27,5 +27,4 @@ with the arguments -ssl no
 ## Screenshots:
 ![alt-text](screenshots/login.png)
 ![alt-text](screenshots/videos.png)
-## Todo:
-cookie checking for vid uploads
+
