@@ -10,6 +10,7 @@
     "react-dom": "^16.12.0",
     "react-scripts": "3.3.0"
   },
+  "homepage":"https://scifi6546.github.io/hermit/",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
