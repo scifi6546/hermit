@@ -80,7 +80,7 @@ impl UserVec{
         }
         return token;
     }
-    //verifies a token
+    //verifies a token and makes sure user is authorized
     pub fn verify_token(&self,token:String)->bool{
         if token==""{
             return false;
@@ -141,4 +141,32 @@ fn get_salt()->[u8;20]{
         array[i] = rand::random::<u8>();
     }
     return array;
+}
+#[cfg(test)]
+mod test{
+    use crate::state::users::new; 
+    #[test]
+    fn add_user(){
+        let mut users = new();
+        assert!(users.add_user("user".to_string(),"hunter2".to_string()).is_ok());
+        assert!(users.verify_user("user".to_string(),
+            "hunter2".to_string()).is_ok());
+    }
+    #[test]
+    fn user_cant_login(){
+        let mut users = new();
+        assert!(users.verify_user("user".to_string(),
+            "hunter2".to_string()).is_err());
+    }
+    #[test]
+    fn get_user_token(){
+        let user = "user".to_string();
+        let password = "hunter2".to_string();
+        let mut users = new();
+        assert!(users.add_user(user.clone(),password.clone()).is_ok());
+        let res = users.verify_user(user.clone(),password.clone());
+        assert!(res.is_ok());
+        assert!(users.verify_token(res.unwrap()));
+    }
+
 }

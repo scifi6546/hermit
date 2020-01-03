@@ -12,4 +12,5 @@ COPY ./static ./static
 COPY ./templates ./templates
 RUN mkdir thumbnails
 RUN ls -alh
-CMD ["hermit-rust"]
+ENV SSL=""
+CMD hermit-rust $SSL
