@@ -256,7 +256,7 @@ fn init_state(startup_otions:StartupOptions)->Result<State,String>{
             for user in cfg.users.clone(){
                 let res = out.users.load_user(user.username,user.passwd);
                 if res.is_err(){
-                    println!("failed to add user");
+                    return res;
                 }
             }
             return Ok(out);
@@ -279,11 +279,11 @@ fn empty_state(startup_otions:StartupOptions)->State{
 }
 fn make_ssl_key(){
     if !Path::new("key.pem").exists() || !Path::new("cert.pem").exists(){
-        println!("making ssl");
+        println!("making ssl certificate");
         let _res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
             .arg("-nodes").arg("-keyout").arg("key.pem").arg("-out").arg("cert.pem")
             .arg("-days").arg("365").arg("-subj").arg("/CN=localhost").output();
-        println!("done with ssl");
+        println!("done making ssl certificate");
     }
 }
 pub fn run_webserver(state_in:&mut State,use_ssl:bool){
@@ -291,14 +291,6 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
     let temp_state = RwLock::new(state_in.clone());
     let shared_state = web::Data::new(temp_state);
     // load ssl keys
-    /*
-    let mut builder =
-        SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    builder
-        .set_private_key_file("key.pem", SslFiletype::PEM)
-        .unwrap();
-    builder.set_certificate_chain_file("cert.pem").unwrap();
-    */
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
 	env_logger::init();
@@ -363,13 +355,10 @@ struct UserReq{
     password: String,
 }
 fn login(info: web::Json<UserReq>, data:web::Data<RwLock<State>>,session:Session)-> Result<String>{
-    println!("Processed Username: {} Password: {}",info.username,info.password);
 	let mut state_data=data.write().unwrap();
     let auth=state_data.auth_user(info.username.clone(),info.password.clone());
     if auth.is_ok(){
-        println!("Authenticated Username: {} Password: {}",info.username,info.password);
         let token = auth.unwrap();
-        println!("token: {}",token.clone());
         let res = session.set("token",token);
         if res.is_ok(){
             return Ok("logged in sucessfully".to_string());
@@ -378,7 +367,6 @@ fn login(info: web::Json<UserReq>, data:web::Data<RwLock<State>>,session:Session
         }
     }
     else{
-        println!("Denied Username: {} Password: {}",info.username,info.password);
         return Ok("Login Failed".to_string());
 
     }
@@ -391,7 +379,6 @@ fn add_user(info:web::Json<UserReq>,data:web::Data<RwLock<State>>,session:Sessio
     state_data.print_users();
     let res = state_data.add_user(username.clone(),password.clone(),token);
     if res.is_ok(){
-        println!("Added Username: {} Password: {}",username,password);
         return Ok("sucess".to_string());
     }
     return Ok("failed".to_string());
@@ -401,7 +388,6 @@ pub fn edit_video(info:web::Json<VideoEditStruct>,data:web::Data<RwLock<State>>,
         let mut state_data= data.write().unwrap();
         let token_res = session.get("token");
         if token_res.is_ok(){
-            println!("info: {}",info.path);
             let res_out = state_data.edit_videodata(token_res.unwrap().unwrap(),info.clone());
             if res_out.is_ok(){
                 return Ok(res_out.ok().unwrap());

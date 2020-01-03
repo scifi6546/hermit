@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 openssl="*"
-actix-web={version="*",features=["ssl"]}
+actix-web={version="1.0.9",features=["ssl"]}
 actix-session="*"
 actix-files="*"
 serde={version="*", features=["derive"]}
