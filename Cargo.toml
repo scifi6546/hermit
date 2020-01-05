@@ -6,9 +6,9 @@ edition = "2018"
 
 [dependencies]
 openssl="*"
-actix-web={version="*",features=["ssl"]}
-actix-session="*"
-actix-files="*"
+actix-web={version="1.0.9",features=["ssl"]}
+actix-session="0.2.0"
+actix-files="0.1.7"
 serde={version="*", features=["derive"]}
 serde_json="*"
 rust-argon2="0.4.0"

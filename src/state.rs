@@ -1,6 +1,7 @@
 mod videos;
 mod config;
-use actix_web::{middleware::Logger, web,App,HttpResponse,HttpServer,Responder,Result};
+use actix_web::{middleware::Logger, web,App,HttpResponse,HttpRequest,HttpServer,Responder,Result};
+use std::path::PathBuf;
 use std::path::Path;
 use std::process::Command;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
@@ -230,13 +231,13 @@ impl State{
                     return Err("error in writing".to_string()); 
                 }
 	}
-}
+}/*
 lazy_static!{
 	pub static ref TERA: Tera = {
-		let tera = compile_templates!("templates/**/*");
-		tera
+		//let tera = compile_templates!("templates/**/*");
+		//tera
 	};
-}
+}*/
 //used to declare things that will be set in the cli args
 struct StartupOptions{
     use_ssl:bool,//whether or not to redirect to https
@@ -259,7 +260,7 @@ fn init_state(startup_otions:StartupOptions)->Result<State,String>{
             for user in cfg.users.clone(){
                 let res = out.users.load_user(user.username,user.passwd);
                 if res.is_err(){
-                    println!("failed to add user");
+                    return Err(res.err().unwrap());
                 }
             }
             return Ok(out);
@@ -282,11 +283,11 @@ fn empty_state(startup_otions:StartupOptions)->State{
 }
 fn make_ssl_key(){
     if !Path::new("key.pem").exists() || !Path::new("cert.pem").exists(){
-        println!("making ssl");
+        println!("making ssl certificate");
         let _res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
             .arg("-nodes").arg("-keyout").arg("key.pem").arg("-out").arg("cert.pem")
             .arg("-days").arg("365").arg("-subj").arg("/CN=localhost").output();
-        println!("done with ssl");
+        println!("done making ssl certificate");
     }
 }
 pub fn run_webserver(state_in:&mut State,use_ssl:bool){
@@ -294,14 +295,6 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
     let temp_state = RwLock::new(state_in.clone());
     let shared_state = web::Data::new(temp_state);
     // load ssl keys
-    /*
-    let mut builder =
-        SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    builder
-        .set_private_key_file("key.pem", SslFiletype::PEM)
-        .unwrap();
-    builder.set_certificate_chain_file("cert.pem").unwrap();
-    */
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
 	env_logger::init();
@@ -315,12 +308,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
 	    .route("/api/videos",web::get().to(get_videos))
 	    .route("/api/add_user",web::post().to(add_user))
             .route("/api/get_user",web::get().to(get_users))
-            .route("/vid_html/{name}",web::get().to(vid_html))
-            .route("/settings",web::get().to(settings))
             .route("/", web::get().to(index))
-            .route("/login",web::get().to(login_html))
-            .route("/setup",web::get().to(setup))
-            .route("/playlists",web::get().to(playlists))
             .route("/api/setup",web::post().to(api_setup))
             .route("/api/is_setup",web::get().to(api_is_setup))
             .route("/api/logout",web::post().to(logout_api))
@@ -332,7 +320,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/edit_video",web::post().to(edit_video))
             .route("/videos/{video_name}",web::get().to(video_files))
             .route("/files/videos/{video_name}",web::get().to(video_files))
-            .service(actix_files::Files::new("/static","./static/"))
+            .service(actix_files::Files::new("/static","./static/static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
             .service(actix_files::Files::new("/files/thumbnails",thumb_dir.clone()))
 			
@@ -370,13 +358,10 @@ struct UserReq{
     password: String,
 }
 fn login(info: web::Json<UserReq>, data:web::Data<RwLock<State>>,session:Session)-> Result<String>{
-    println!("Processed Username: {} Password: {}",info.username,info.password);
 	let mut state_data=data.write().unwrap();
     let auth=state_data.auth_user(info.username.clone(),info.password.clone());
     if auth.is_ok(){
-        println!("Authenticated Username: {} Password: {}",info.username,info.password);
         let token = auth.unwrap();
-        println!("token: {}",token.clone());
         let res = session.set("token",token);
         if res.is_ok(){
             return Ok("logged in sucessfully".to_string());
@@ -385,7 +370,6 @@ fn login(info: web::Json<UserReq>, data:web::Data<RwLock<State>>,session:Session
         }
     }
     else{
-        println!("Denied Username: {} Password: {}",info.username,info.password);
         return Ok("Login Failed".to_string());
 
     }
@@ -398,7 +382,6 @@ fn add_user(info:web::Json<UserReq>,data:web::Data<RwLock<State>>,session:Sessio
     state_data.print_users();
     let res = state_data.add_user(username.clone(),password.clone(),token);
     if res.is_ok(){
-        println!("Added Username: {} Password: {}",username,password);
         return Ok("sucess".to_string());
     }
     return Ok("failed".to_string());
@@ -408,7 +391,6 @@ pub fn edit_video(info:web::Json<VideoEditStruct>,data:web::Data<RwLock<State>>,
         let mut state_data= data.write().unwrap();
         let token_res = session.get("token");
         if token_res.is_ok(){
-            //println!("info: {}",info);
             let res_out = state_data.edit_videodata(token_res.unwrap().unwrap(),info.clone());
             if res_out.is_ok(){
                 return Ok(res_out.ok().unwrap());
@@ -517,39 +499,9 @@ struct Index{
 }
 //todo redirect to https. I need to figure out how to do that
 //Current Ideas: detect if user is on http, if on http redirect to https
-pub fn index(data:web::Data<RwLock<State>>, session:Session)->impl Responder{
-    let state_data = data.read().unwrap();
-    if !state_data.is_setup(){
-        println!("is not setup");
-        return HttpResponse::TemporaryRedirect().header("location", "/setup").finish();
-    }
-    println!("getting token");
-    let temp = session.get("token");
-    let mut token:String="".to_string();
-    if temp.is_ok(){
-        let temp_token = temp.ok().unwrap();
-        if temp_token.is_some(){
-            token=temp_token.unwrap();
-        }
-    }
-    println!("getting state data");
-    let index_data = state_data.get_videos(token); 
-    if index_data.is_ok(){
-	    let index_data=Index{
-	        videos:index_data.ok().unwrap()
-	    };
-	    let out_data = TERA.render("home.jinja2",&index_data);
-	    if out_data.is_ok(){
-		    return HttpResponse::Ok().body(out_data.unwrap());
-	    }else{
-		    println!("data not rendered");
-	    }
-    }
-    else{
-        return HttpResponse::TemporaryRedirect().header("location", "/login").finish();
-    }
-
-    HttpResponse::Ok().body("".to_string())
+pub fn index(req: HttpRequest)-> Result<NamedFile>{
+    let path: PathBuf = PathBuf::from("static/index.html");
+    Ok(NamedFile::open(path)?)
         
 }
 #[derive(Serialize,Deserialize)]
@@ -564,51 +516,6 @@ pub fn api_is_setup(data:web::Data<RwLock<State>>,session:Session)->impl Respond
     }else{
         let setup = IsSetupStruct{is_setup:"false".to_string()};
         return HttpResponse::Ok().body(serde_json::to_string(&setup).unwrap());
-    }
-}
-pub fn setup(data:web::Data<RwLock<State>>)->impl Responder{
-        let render_data = TERA.render("setup.jinja2",&EmptyStruct{}); 
-        let state = data.read();
-        if render_data.is_ok() && !state.unwrap().is_setup(){
-
-	    return HttpResponse::Ok().body(render_data.unwrap());
-        }
-            return HttpResponse::TemporaryRedirect().header("Location","/setup").finish();
-}
-pub fn settings(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
-    let render_data=TERA.render("settings.jinja2",&EmptyStruct{});
-    let token_res = session.get("token");
-    if token_res.is_ok(){
-        let state = data.read();
-        if render_data.is_ok() && state.unwrap().is_auth(token_res.unwrap().unwrap()){
-            return HttpResponse::Ok().body(render_data.unwrap());
-        }else{
-            return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
-        }
-    }else{
-        return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
-    }
-}
-pub fn playlists(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
-
-    let render_data=TERA.render("playlists.jinja2",&EmptyStruct{});
-    let token_res = session.get("token");
-    if token_res.is_ok(){
-        let state = data.read();
-        if render_data.is_ok(){
-            if state.unwrap().is_auth(token_res.unwrap().unwrap()){
-                return HttpResponse::Ok().body(render_data.unwrap());
-            }else{
-                return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
-            }
-            println!("rendered playlists");
-            return HttpResponse::Ok().body(render_data.unwrap());
-        }else{
-            println!("failed to render playlists"); 
-            return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
-        }
-    }else{
-        return HttpResponse::TemporaryRedirect().header("Location","/login").finish();
     }
 }
 #[derive(Serialize,Deserialize)]
@@ -723,40 +630,6 @@ fn logout_api(session:Session,data:web::Data<RwLock<State>>)->Result<String>{
 #[derive(Deserialize,Serialize)]
 struct EmptyStruct{
 
-}
-pub fn login_html(_data:web::Data<RwLock<State>>, session:Session) -> impl Responder{
-    println!("ran redirect");
-    let html = TERA.render("login.jinja2",&EmptyStruct{});
-    if html.is_ok(){
-        return HttpResponse::Ok().body(html.unwrap());
-    }
-    else{
-        println!("failed to render body");
-        return HttpResponse::InternalServerError().body("");
-    }
-}
-pub fn vid_html(data:web::Data<RwLock<State>>,session:Session,path: web::Path<(String,)>)->HttpResponse{
-
-	let token:String = session.get("token").unwrap().unwrap();
-	let vid_name:String = path.0.clone();
-	let state_data = data.write().unwrap();
-	let vid_res = state_data.get_vid_html(token,vid_name.clone());
-	if vid_res.is_ok(){
-
-		let vid:videos::VideoHtml = vid_res.unwrap();
-		let data=TERA.render("video.jinja2",&vid);
-		if data.is_ok(){
-			return HttpResponse::Ok().body(data.unwrap());
-		}else{
-			println!("did not process template correctly");
-		}
-	}
-	else{
-		println!("did not get video");
-	}
-	//then use videos.jinja2 to create the data and return it
-		
-    HttpResponse::Ok().body(vid_name)
 }
 pub fn video_files(data:web::Data<RwLock<State>>,session:Session,
                 path:web::Path<(String,)>)-> impl Responder{
