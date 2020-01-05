@@ -2,6 +2,9 @@ FROM rust:1.36-buster
 RUN apt update && apt install -y ffmpegthumbnailer
 WORKDIR /usr/src/hermit
 COPY . .
+WORKDIR /usr/src/hermit/react-app
+RUN npm run deploy
+WORKDIR /usr/src/hermit
 RUN cargo install --path .
 EXPOSE 8088
 EXPOSE 8443
