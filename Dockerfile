@@ -3,6 +3,7 @@ RUN apt update && apt install -y ffmpegthumbnailer npm
 WORKDIR /usr/src/hermit
 COPY . .
 WORKDIR /usr/src/hermit/react-app
+RUN npm install
 RUN npm run deploy
 WORKDIR /usr/src/hermit
 RUN cargo install --path .
