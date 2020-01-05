@@ -1,5 +1,5 @@
 FROM rust:1.36-buster
-RUN apt update && apt install -y ffmpegthumbnailer
+RUN apt update && apt install -y ffmpegthumbnailer npm
 WORKDIR /usr/src/hermit
 COPY . .
 WORKDIR /usr/src/hermit/react-app
