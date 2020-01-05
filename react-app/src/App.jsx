@@ -12,7 +12,7 @@ function App() {
       </Menu>
       <Container>
         Hermit is A privacy focused video server for Macos, Windows and Linux.
-        
+
       </Container>
     </div>
   );
