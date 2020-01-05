@@ -3,18 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@blueprintjs/core": "^3.22.3",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.4.0",
     "@testing-library/user-event": "^7.2.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",
-    "react-scripts": "3.3.0"
+    "react-scripts": "3.3.0",
+    "semantic-ui-css": "^2.4.1",
+    "semantic-ui-react": "^0.88.2"
   },
-  "homepage":"https://scifi6546.github.io/hermit/",
+  "homepage": "https://scifi6546.github.io/hermit/",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "deploy":"npm run build && cp -r build/* ../docs",
+    "deploy": "npm run build && cp -r build/* ../docs",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -32,5 +35,10 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "blueprintjs": "0.0.8",
+    "semantic-ui": "^2.4.2",
+    "typescript": "^3.7.4"
   }
 }

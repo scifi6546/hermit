@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/hermit/precache-manifest.4638de66be7120dda3ec12de8f1bbde3.js"
+  "/hermit/precache-manifest.31ac7d9c95ea35b951de3939576e02d0.js"
 );
 
 self.addEventListener('message', (event) => {
