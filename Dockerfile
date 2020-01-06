@@ -12,8 +12,7 @@ EXPOSE 8443
 RUN useradd -ms /bin/bash app_user
 USER app_user
 WORKDIR /home/app_user
-COPY ./static ./static
-COPY ./templates ./templates
+RUN cp -r /usr/src/hermit/static /home/app_user/static
 RUN mkdir thumbnails
 RUN ls -alh
 ENV SSL=""
