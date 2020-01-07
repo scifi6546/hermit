@@ -4,7 +4,7 @@ WORKDIR /usr/src/hermit
 COPY . .
 WORKDIR /usr/src/hermit/react-client
 run mkdir /usr/src/hermit/static
-#run mkdir public
+RUN mkdir public
 run echo "" >> public/index.html
 RUN ls
 RUN ls public/
