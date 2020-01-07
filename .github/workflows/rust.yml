@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install ffmpegthumbnailer
-      run:  apt update && apt install -y ffmpegthumbnailer
+      run:  sudo apt update && sudo apt install -y ffmpegthumbnailer
     - name: Build
       run: cargo build --verbose
     - name: Run tests
