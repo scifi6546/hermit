@@ -1,7 +1,3 @@
-#[macro_use]
-extern crate tera;
-#[macro_use]
-extern crate lazy_static;
 use std::env;
 mod state;
 fn main(){

@@ -7,9 +7,7 @@ use std::process::Command;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use actix_session::{Session, CookieSession};
 use std::sync::RwLock;
-
 use actix_files::NamedFile;
-use tera::Tera;
 use serde::{Serialize,Deserialize};
 mod users;
 const DB_PATH:&str = "db.json";
