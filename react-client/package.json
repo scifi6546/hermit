@@ -17,7 +17,7 @@
     "start": "react-scripts start",
     "test": "react-scripts test",
     "build:react": "react-scripts build",
-    "deploy": "rm -rf build && npm run build:react && mkdir ../static && cp -r build/* ../static"
+    "deploy": "rm -rf build && npm run build:react && cp -r build/* ../static"
   },
   "eslintConfig": {
     "extends": "react-app"
