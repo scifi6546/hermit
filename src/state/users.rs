@@ -1,5 +1,5 @@
 use argon2::{self,Config};
-
+use gulkana::DataStructure;
 #[derive(Clone)]
 pub struct User{
     pub name: String,
@@ -8,6 +8,8 @@ pub struct User{
 }
 #[derive(Clone)]
 pub struct UserVec{
+    //key is username
+    //pub _users: DataStructure<String,User>,
     pub _users:Vec<User>
 }
 #[derive(Clone)]
