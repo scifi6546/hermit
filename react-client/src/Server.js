@@ -36,7 +36,7 @@ class Server extends React.Component {
     this.login = this.login.bind(this);
     this.playVideo = this.playVideo.bind(this);
     this.quitVideo = this.quitVideo.bind(this);
-    this.state = State;
+    this.state = _.cloneDeep(State);
     this.state.serverUrl = props.url;
     this.updateVideo = this.updateVideo.bind(this);
     this.changeSetup = this.changeSetup.bind(this);
