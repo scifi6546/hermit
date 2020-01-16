@@ -65,13 +65,22 @@ impl UserVec{
         let user_res = self._users.get(&username_in.clone());
         if user_res.is_ok(){
             let mut user = user_res.ok().unwrap().clone();
-            let token = self.make_token();
-            user.token=token.clone();
-            let set_data = self._users.set_data(&username_in,&user);
-            if set_data.is_ok(){
-                return Ok(token);
+            let config=Config::default();
+
+            if argon2::verify_encoded(&user.password,
+                &password.clone().into_bytes()).unwrap(){
+
+                    
+                let token = self.make_token();
+                user.token=token.clone();
+                let set_data = self._users.set_data(&username_in,&user);
+                if set_data.is_ok(){
+                    return Ok(token);
+                }else{
+                    return Err("failed to set data".to_string());
+                }
             }else{
-                return Err("failed to set data".to_string());
+                return Err("password incorrect".to_string());
             }
         }
         return Err("auth failed".to_string());
