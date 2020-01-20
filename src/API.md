@@ -112,5 +112,11 @@ Send a post request to /api/settings with the arguments
 }
 ```
 Action is the action to perfrom. Currently only "set_resolution" is a valid action. 
-### Set Resolition
+### Set Resolution
 args will be the resolution to set it to.
+## Query Resolution
+Send a get requet to /api/thumbnail_resolution
+returns
+```json
+	thumbnail_resolution:u32,
+```
