@@ -118,5 +118,7 @@ args will be the resolution to set it to.
 Send a get requet to /api/thumbnail_resolution
 returns
 ```json
+{
 	thumbnail_resolution:u32,
+}
 ```
