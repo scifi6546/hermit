@@ -102,6 +102,15 @@ returns:
 {
 		is_setup: {"true" or "false"}
 }
-
-
-
+```
+## Settings
+Send a post request to /api/settings with the arguments 
+```json
+{
+    action: String,
+    args: String,
+}
+```
+Action is the action to perfrom. Currently only "set_resolution" is a valid action. 
+### Set Resolition
+args will be the resolution to set it to.
