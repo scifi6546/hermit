@@ -64,7 +64,8 @@ returns
 ```
 ## Getting a list of playlists
 send a get request to /api/get_playlist_all
-returns ```json
+returns
+```json
 {
 	name:{name of playlist}
 	videos:[
@@ -84,6 +85,8 @@ returns ```json
 		
 	
 }
+```
+
 # Finding out if the user is logged in
 send a get to request to /api/logged_in
 returns
