@@ -185,6 +185,9 @@ impl VideoDB{
     pub fn iter(&self)->std::slice::Iter<'_,db::FileData>{
         return self.database.iter();
     }
+    pub fn get_thumb_res(&self)->Result<u32,String>{
+        return Ok(self.thumb_res);
+    }
 }
 fn is_video(path_str: String)->bool{
     let path = Path::new(&path_str);

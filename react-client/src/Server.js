@@ -1,8 +1,9 @@
 import React from 'react';
 import Video from "./video";
 //import Button from 'blueprintjs';
-import { Grid, Container, Form, Segment, Label, Message, Header } from 'semantic-ui-react';
+import { Grid, Container, Form, Segment, Menu, Message, Header } from 'semantic-ui-react';
 import './App.css';
+import Settings from "./Settings"
 import Axios from 'axios';
 import VideoThumbnail from './VideoThumbnail';
 import _ from "lodash";
@@ -21,6 +22,7 @@ let State = {
     video_dir: "",
     thumb_res: ""
   },
+  settingsShown:[],
   setupError: []
 }
 class Server extends React.Component {
@@ -41,6 +43,7 @@ class Server extends React.Component {
     this.updateVideo = this.updateVideo.bind(this);
     this.changeSetup = this.changeSetup.bind(this);
     this.setup = this.setup.bind(this);
+    this.gotoSettings=this.gotoSettings.bind(this);
     console.log("state");
     console.log(this.state);
     //do setup stuff
@@ -118,6 +121,7 @@ class Server extends React.Component {
     this.setState({
       videos: temp_vid_arr,
       videosShown: temp_vid_arr,
+      settingsShown:[]
     })
     console.log(resp);
   }
@@ -150,6 +154,14 @@ class Server extends React.Component {
       playingVideo: [],
       videosShown: this.state.videos,
     });
+  }
+  gotoSettings(event){
+    console.log(event);
+    console.log("went to settings");
+    this.setState({
+      videosShown:[],
+      settingsShown:["yes"]
+    })
   }
   async setup() {
     this.state.setup.thumb_res = Number(this.state.setup.thumb_res);
@@ -184,94 +196,108 @@ class Server extends React.Component {
     return (
 
       <Container>
-        {this.state.loggedIn.map((log) =>
-          <Grid textAlign='center' style={{ height: '100vh' }} verticalAlign='middle'>
-            <Grid.Column style={{ maxWidth: 450 }}>
-              <Form key={0} error onSubmit={this.login}>
-                <Header>
-                  Log In to Account
+        <Menu fixed="top" inverted>
+          <Container>
+           
+            <Menu.Item header onClick={this.gotoSettings} as = "a">Settings</Menu.Item>
+            <Menu.Item header onClick={this.getVideos} as = "a">Videos</Menu.Item>
+            
+          </Container>
+          
+        </Menu>
+        <Container style={{marginTop:'5em'}}>
+          {this.state.loggedIn.map((log) =>
+            <Grid textAlign='center' style={{ height: '100vh' }} verticalAlign='middle'>
+              <Grid.Column style={{ maxWidth: 450 }}>
+                <Form key={0} error onSubmit={this.login}>
+                  <Header>
+                    Log In to Account
             </Header>
-                <Form.Input
-                  type="text"
-                  onChange={this.changeUsername}
-                  icon="user"
-                />
-                <Form.Input
-                  type="password"
-                  icon="lock"
-                  onChange={this.changePassword}
-                />
-                <Form.Input
-                  type="submit"
-                />
-                {this.state.setupError.map((err) =>
-                  <Message content={err} />
-                )}
-              </Form>
-            </Grid.Column>
-          </Grid>
-        )}
-        {this.state.notSetup.map((foo) =>
-          <Form onSubmit={this.setup}>
+                  <Form.Input
+                    type="text"
+                    onChange={this.changeUsername}
+                    icon="user"
+                  />
+                  <Form.Input
+                    type="password"
+                    icon="lock"
+                    onChange={this.changePassword}
+                  />
+                  <Form.Input
+                    type="submit"
+                  />
+                  {this.state.setupError.map((err) =>
+                    <Message content={err} />
+                  )}
+                </Form>
+              </Grid.Column>
+            </Grid>
+          )}
+          {this.state.notSetup.map((foo) =>
+            <Form onSubmit={this.setup}>
 
-            <Form.Field>
-              <label>
-                Username
+              <Form.Field>
+                <label>
+                  Username
               </label>
-              <input type="text" onChange={this.changeSetup} id="username" />
-            </Form.Field>
+                <input type="text" onChange={this.changeSetup} id="username" />
+              </Form.Field>
 
-            <Form.Field>
-              <label>
-                Password
+              <Form.Field>
+                <label>
+                  Password
               </label>
-              <input type="password" onChange={this.changeSetup} id="password" />
-            </Form.Field>
+                <input type="password" onChange={this.changeSetup} id="password" />
+              </Form.Field>
 
-            <Form.Field>
-              <label>
-                Video Directory
+              <Form.Field>
+                <label>
+                  Video Directory
               </label>
-              <input type="text" onChange={this.changeSetup} id="video_dir" />
-            </Form.Field>
-            <Form.Field>
-              <label>
-                Thumbnail Resolution
+                <input type="text" onChange={this.changeSetup} id="video_dir" />
+              </Form.Field>
+              <Form.Field>
+                <label>
+                  Thumbnail Resolution
               </label>
-              <input type="text" onChange={this.changeSetup} id="thumb_res" />
-            </Form.Field>
-            <Form.Input
-              type="submit"
-            />
-          </Form>
-
-
-
-        )}
-        <Container>
-          <Segment.Group>
-
-            {videos.map((vid, index) =>
-              <VideoThumbnail
-                playVideo={this.playVideo}
-                serverUrl={this.state.serverUrl}
-                thumbnailUrl={vid.thumbnail_url}
-                url={vid.url}
-                updateVideo={this.updateVideo}
-                path={vid.path}
-                starRating={vid.video_data.star_rating}
-                description={vid.video_data.description}
-                rating={vid.video_data.rating}
+                <input type="text" onChange={this.changeSetup} id="thumb_res" />
+              </Form.Field>
+              <Form.Input
+                type="submit"
               />
-            )
-
-            }
+            </Form>
 
 
-            {_.cloneDeep(this.state.playingVideo).map((vid) =>
-              <Video url={vid} quitVideo={this.quitVideo} key={"sd"} />
-            )}
-          </Segment.Group>
+
+          )}
+          {this.state.settingsShown.map((foo)=>
+            <Settings serverUrl={this.state.serverUrl}/>
+          )}
+          <Container>
+            <Segment.Group>
+
+              {videos.map((vid, index) =>
+                <VideoThumbnail
+                  playVideo={this.playVideo}
+                  serverUrl={this.state.serverUrl}
+                  thumbnailUrl={vid.thumbnail_url}
+                  url={vid.url}
+                  updateVideo={this.updateVideo}
+                  path={vid.path}
+                  starRating={vid.video_data.star_rating}
+                  description={vid.video_data.description}
+                  rating={vid.video_data.rating}
+                />
+              )
+
+              }
+
+
+              {_.cloneDeep(this.state.playingVideo).map((vid) =>
+                <Video url={vid} quitVideo={this.quitVideo} key={"sd"} />
+              )}
+            </Segment.Group>
+          </Container>
         </Container>
       </Container>
 
