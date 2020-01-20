@@ -1,7 +1,7 @@
 import React from 'react';
 import Video from "./video";
 //import Button from 'blueprintjs';
-import { Container, Form, Segment, Label, Message } from 'semantic-ui-react';
+import { Grid, Container, Form, Segment, Label, Message, Header } from 'semantic-ui-react';
 import './App.css';
 import Axios from 'axios';
 import VideoThumbnail from './VideoThumbnail';
@@ -21,7 +21,7 @@ let State = {
     video_dir: "",
     thumb_res: ""
   },
-  setupError:[]
+  setupError: []
 }
 class Server extends React.Component {
 
@@ -40,7 +40,7 @@ class Server extends React.Component {
     this.state.serverUrl = props.url;
     this.updateVideo = this.updateVideo.bind(this);
     this.changeSetup = this.changeSetup.bind(this);
-    this.setup=this.setup.bind(this);
+    this.setup = this.setup.bind(this);
     console.log("state");
     console.log(this.state);
     //do setup stuff
@@ -141,7 +141,7 @@ class Server extends React.Component {
     })
   }
   changeSetup(event) {
-    this.state.setup[event.target.id]=event.target.value;
+    this.state.setup[event.target.id] = event.target.value;
     this.setState({
     })
   }
@@ -151,16 +151,16 @@ class Server extends React.Component {
       videosShown: this.state.videos,
     });
   }
-  async setup(){
-    this.state.setup.thumb_res=Number(this.state.setup.thumb_res);
-    let res = await Axios.post(this.state.serverUrl+"/api/setup",this.state.setup)
-    if(res.data==="success"){
+  async setup() {
+    this.state.setup.thumb_res = Number(this.state.setup.thumb_res);
+    let res = await Axios.post(this.state.serverUrl + "/api/setup", this.state.setup)
+    if (res.data === "success") {
       this.setState({
-        notSetup:[]
+        notSetup: []
       })
-    }else{
+    } else {
       this.setState({
-        setupError:[res.data]
+        setupError: [res.data]
       })
     }
     console.log(res);
@@ -185,23 +185,31 @@ class Server extends React.Component {
 
       <Container>
         {this.state.loggedIn.map((log) =>
-          <Form key={0} error onSubmit={this.login}>
-            <Form.Input
-              type="text"
-              onChange={this.changeUsername}
-
-            />
-            <Form.Input
-              type="password"
-              onChange={this.changePassword}
-            />
-            <Form.Input
-              type="submit"
-            />
-            {this.state.setupError.map((err)=>
-              <Message content={err}/>
-            )}
-          </Form>
+          <Grid textAlign='center' style={{ height: '100vh' }} verticalAlign='middle'>
+            <Grid.Column style={{ maxWidth: 450 }}>
+              <Form key={0} error onSubmit={this.login}>
+                <Header>
+                  Log In to Account
+            </Header>
+                <Form.Input
+                  type="text"
+                  onChange={this.changeUsername}
+                  icon="user"
+                />
+                <Form.Input
+                  type="password"
+                  icon="lock"
+                  onChange={this.changePassword}
+                />
+                <Form.Input
+                  type="submit"
+                />
+                {this.state.setupError.map((err) =>
+                  <Message content={err} />
+                )}
+              </Form>
+            </Grid.Column>
+          </Grid>
         )}
         {this.state.notSetup.map((foo) =>
           <Form onSubmit={this.setup}>
@@ -210,27 +218,27 @@ class Server extends React.Component {
               <label>
                 Username
               </label>
-              <input type="text" onChange={this.changeSetup} id="username"/>
+              <input type="text" onChange={this.changeSetup} id="username" />
             </Form.Field>
 
             <Form.Field>
               <label>
                 Password
               </label>
-              <input type="password" onChange={this.changeSetup} id="password"/>
+              <input type="password" onChange={this.changeSetup} id="password" />
             </Form.Field>
-            
+
             <Form.Field>
               <label>
                 Video Directory
               </label>
-              <input type="text" onChange={this.changeSetup} id="video_dir"/>
+              <input type="text" onChange={this.changeSetup} id="video_dir" />
             </Form.Field>
             <Form.Field>
               <label>
                 Thumbnail Resolution
               </label>
-              <input type="text" onChange={this.changeSetup} id="thumb_res"/>
+              <input type="text" onChange={this.changeSetup} id="thumb_res" />
             </Form.Field>
             <Form.Input
               type="submit"
