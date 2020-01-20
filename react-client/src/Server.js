@@ -7,6 +7,7 @@ import Settings from "./Settings"
 import Axios from 'axios';
 import VideoThumbnail from './VideoThumbnail';
 import _ from "lodash";
+import PlaylistList from './PlaylistList';
 //const URL="";
 let State = {
   serverUrl: "",
@@ -22,6 +23,7 @@ let State = {
     video_dir: "",
     thumb_res: ""
   },
+  playlist:[],
   settingsShown:[],
   setupError: []
 }
@@ -44,6 +46,7 @@ class Server extends React.Component {
     this.changeSetup = this.changeSetup.bind(this);
     this.setup = this.setup.bind(this);
     this.gotoSettings=this.gotoSettings.bind(this);
+    this.gotoPlaylist=this.gotoPlaylist.bind(this);
     console.log("state");
     console.log(this.state);
     //do setup stuff
@@ -156,11 +159,18 @@ class Server extends React.Component {
     });
   }
   gotoSettings(event){
-    console.log(event);
-    console.log("went to settings");
     this.setState({
       videosShown:[],
+      playlist:[],
       settingsShown:["yes"]
+    })
+  }
+  gotoPlaylist(event){
+    this.setState({
+      videosShown:[],
+      playlist:[""],
+      settingsShown:[]
+
     })
   }
   async setup() {
@@ -199,8 +209,10 @@ class Server extends React.Component {
         <Menu fixed="top" inverted>
           <Container>
            
-            <Menu.Item header onClick={this.gotoSettings} as = "a">Settings</Menu.Item>
+            
             <Menu.Item header onClick={this.getVideos} as = "a">Videos</Menu.Item>
+            <Menu.Item header onClick={this.gotoPlaylist} as = "a">Playlists</Menu.Item>
+            <Menu.Item header onClick={this.gotoSettings} as = "a">Settings</Menu.Item>
             
           </Container>
           
@@ -272,6 +284,9 @@ class Server extends React.Component {
           )}
           {this.state.settingsShown.map((foo)=>
             <Settings serverUrl={this.state.serverUrl}/>
+          )}
+          {this.state.playlist.map((foo)=>
+            <PlaylistList url={this.state.serverUrl}/>
           )}
           <Container>
             <Segment.Group>
