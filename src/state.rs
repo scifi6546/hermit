@@ -200,7 +200,7 @@ impl State{
         pub fn get_users(&self,token:String)->Result<Vec<UserOut>,String>{
             if self.is_auth(token){
                 let mut out:Vec<UserOut> = Vec::new();
-                for user in self.users._users.clone(){
+                for (username,mut user) in self.users.iter(){
                     out.push(UserOut{username:user.name.clone()});
                 }
                 return Ok(out);
