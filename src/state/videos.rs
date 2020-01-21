@@ -1,5 +1,7 @@
 use serde::{Deserialize,Serialize};
 use std::path::Path;
+use gakona;
+use std::collections::HashMap;
 
 mod thumbnail;
 mod db;
@@ -26,9 +28,8 @@ pub struct VideoEditData{
     pub description:String,//Dexcription Of video
     pub name:String,//name to change to
 }
-#[derive(Clone)]
 pub struct VideoDB{
-    database: db::FileDB,
+    database:gakona::Database,
     thumb_dir:String,
     thumb_res:u32,
 }
