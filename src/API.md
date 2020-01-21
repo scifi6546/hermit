@@ -40,6 +40,14 @@ Send a POST request to /api/edit_video with the following data
 	}
 }
 ```
+## Edit Playlist
+send a post request to /api/add_playlist with the following data.
+```
+{
+    name:String,//name of playlist
+    videos:Vec<String>,//vec with video path names
+}
+```
 ## Getting video from name
 send a post request with data
 ```
