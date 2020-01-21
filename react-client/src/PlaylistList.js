@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "lodash";
-import { Button, Image, Container, Segment } from "semantic-ui-react";
+import { Button, Image, Container, Segment, Form } from "semantic-ui-react";
 import Axios from "axios";
 const state = {
     url: "",
@@ -18,6 +18,7 @@ class PlaylistList extends React.Component {
         this.getVideos = this.getVideos.bind(this);
         this.makePlaylist = this.makePlaylist.bind(this);
         this.selectVideo = this.selectVideo.bind(this);
+        this.sumbitPlaylist=this.sumbitPlaylist.bind(this);
 
         this.getVideos();
         this.getPlaylists();
@@ -53,6 +54,12 @@ class PlaylistList extends React.Component {
         }
         this.setState({});
     }
+    sumbitPlaylist(){
+        let videos_in_playlist=[]
+        for (let i = 0; i < this.state.videoList.length; i++) {
+
+        }
+    }
     render() {
 
         return (
@@ -60,6 +67,13 @@ class PlaylistList extends React.Component {
                 <Button onClick={this.makePlaylist}>Create New Playlist</Button>
                 {this.state.edit_playlist.map((foo) =>
                     <Container>
+                        <Form onSubmit={this.sumbitPlaylist}>
+                            <Form.Field>
+                                <label>Playlist Name</label>
+                                <input placeholder="playlist name"></input>
+                            </Form.Field>
+                            <Button type='submit'>Submit</Button>
+                        </Form>
                         {this.state.videoList.map((vid) =>
                             <Segment key={vid.name} inverted color={vid.color}>
 
