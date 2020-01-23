@@ -2,12 +2,14 @@ import React from "react";
 import _ from "lodash";
 import { Button, Image, Container, Segment, Form } from "semantic-ui-react";
 import Axios from "axios";
+import Playlist from "./PlaylistPlay";
 const state = {
     url: "",
     playlistList: [],
     videoList: [],
     edit_playlist: [],
-    edit_playlist_name:""
+    edit_playlist_name:"",
+    playing_playlist:[]
 }
 class PlaylistList extends React.Component {
     constructor(props) {
@@ -21,6 +23,7 @@ class PlaylistList extends React.Component {
         this.selectVideo = this.selectVideo.bind(this);
         this.sumbitPlaylist=this.sumbitPlaylist.bind(this);
         this.edit_playlist_name=this.edit_playlist_name.bind(this);
+        this.activatePlaylist=this.activatePlaylist.bind(this);
 
         this.getVideos();
         
@@ -79,6 +82,19 @@ class PlaylistList extends React.Component {
         let data = {name:this.state.edit_playlist_name,videos:videos_in_playlist};
         Axios.post(this.state.url+"/api/add_playlist",data)
     }
+    activatePlaylist(event){
+        console.log(event.target);
+        for(let i in this.state.playlistList){
+            if(this.state.playlistList[i].name==event.target.id){
+                this.setState({
+                    playing_playlist:[_.cloneDeep(this.state.playlistList[i])],
+                    edit_playlist:[],
+                    playlistList:[]
+                })
+            }
+        }
+
+    }
     render() {
 
         return (
@@ -107,12 +123,17 @@ class PlaylistList extends React.Component {
                     </Container>
                 )}
                 {this.state.playlistList.map((play)=>
-                            <Segment key={play.name}>
+                            <Segment key={play.name} onClick={this.activatePlaylist} id={play.name}>
                                 
-                                <Image src={play.videos[0].thumbnail_url} />
+                                <Image src={play.videos[0].thumbnail_url} id={play.name}/>
                                 {play.name}
                             </Segment>
-                        )}
+                )}
+                {this.state.playing_playlist.map((play)=>
+                <Container>
+                        <Playlist playlist={play}/>
+                </Container>
+                )}
             </Container>
         )
     }
