@@ -7,6 +7,7 @@ class Playlist extends React.Component {
         this.state = { playlist: _.cloneDeep(props.playlist),
         playing_video_index:0}
         this.play_next_vid=this.play_next_vid.bind(this);
+        this.play_video=this.play_video.bind(this);
     }
     componentDidMount(){
        
@@ -24,6 +25,21 @@ class Playlist extends React.Component {
         console.log("video ended");
         
     }
+    play_video(event){
+        console.log(event.target);
+        let video_name = event.target.id;
+        let video_index=null;
+        for(let i in this.state.playlist.videos){
+            if(this.state.playlist.videos[i].name==video_name){
+                video_index=i;
+            }
+        }
+        if(video_index!=null){
+            this.setState({
+                playing_video_index:video_index,
+            })
+        }
+    }
     render() {
 
         return (
@@ -38,12 +54,12 @@ class Playlist extends React.Component {
                 <Menu style={{ "overflowX": "scroll", "height": "100%" }}>
 
                     {this.state.playlist.videos.map((video) =>
-                        <Menu.Item active={this.state.playlist.videos[this.state.playing_video_index].name===video.name} key={video.name}>
-                            <div style={{ "display": "flex", "flexDirection": "column", "padding": ".00cm", "width": "100%",}}>
-                                <div>
-                                    <Image src={video.thumbnail_url} style={{"height":"1cm"}}/>
+                        <Menu.Item active={this.state.playlist.videos[this.state.playing_video_index].name===video.name} key={video.name} id={video.name} onClick={this.play_video}>
+                            <div style={{ "display": "flex", "flexDirection": "column", "padding": ".00cm", "width": "100%",}} id={video.name}>
+                                <div id={video.name}>
+                                    <Image src={video.thumbnail_url} style={{"height":"1cm"}} id={video.name}/>
                                 </div>
-                                <div>
+                                <div id={video.name}>
                                     {video.name}
                                 </div>
                             </div>
