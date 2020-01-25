@@ -6,3 +6,4 @@ config.json
 Cargo.lock
 static/*
 db.json
+thumbnails/

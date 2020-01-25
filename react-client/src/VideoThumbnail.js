@@ -25,7 +25,7 @@ const State= {
 class VideoThumbnail extends React.Component{
     constructor(props){
         super(props);
-        this.state=State;
+        this.state=_.cloneDeep(State);
         console.log("props")
         console.log(props);
         this.state.serverUrl=props.serverUrl;

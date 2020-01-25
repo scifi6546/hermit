@@ -1,4 +1,4 @@
-FROM rust:1.36-buster
+FROM rust:1.40-buster
 RUN apt update && apt install -y ffmpegthumbnailer npm
 WORKDIR /usr/src/hermit
 COPY . .
