@@ -33,7 +33,7 @@ class PlaylistEdit extends React.Component {
     quit(){
         this.state.quitEdit();
     }
-    sumbitPlaylist(input) {
+    async sumbitPlaylist(input) {
         console.log(input.target);
         let videos_in_playlist = []
         for (let i = 0; i < this.state.videoList.length; i++) {
@@ -41,7 +41,7 @@ class PlaylistEdit extends React.Component {
                 videos_in_playlist.push(this.state.videoList[i].path)
         }
         let data = { name: this.state.playlist.name, videos: videos_in_playlist };
-        Axios.post(this.state.serverUrl + "/api/edit_playlist", data)
+        await Axios.post(this.state.serverUrl + "/api/edit_playlist", data)
         this.quit();
     }
     selectVideo(event, target) {

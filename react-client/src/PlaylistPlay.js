@@ -2,6 +2,7 @@ import React from "react";
 import _ from "lodash";
 import { Button, Grid, Icon, Image, Menu, Container, Header } from "semantic-ui-react";
 import PlaylistEdit from "./PlaylistEdit";
+import Axios from 'axios';
 class Playlist extends React.Component {
     constructor(props) {
         super(props)
@@ -20,6 +21,7 @@ class Playlist extends React.Component {
         this.quitPlaylist = this.quitPlaylist.bind(this);
         this.editPlaylist=this.editPlaylist.bind(this);
         this.quitEdit=this.quitEdit.bind(this);
+        this.refreshPlaylist=this.refreshPlaylist.bind(this);
 
     }
     componentDidMount() {
@@ -29,8 +31,23 @@ class Playlist extends React.Component {
         console.log("going to quit");
         this.state.quit();
     }
+    async refreshPlaylist(){
+        let res = await Axios.get(this.state.serverUrl + "/api/get_playlist_all");
+        let data = res.data;
+        for(let i in data){
+            if(data[i].name===this.state.playlist.name){
+                this.setState({
+                    playlist:_.cloneDeep(data[i])
+                });
+                break;
+            }
+            
+        }
+    }
     quitEdit(){
-        this.setState({edit:[]})
+        this.setState({edit:[]});
+        this.refreshPlaylist();
+
     }
     play_next_vid() {
         console.log("video ended");
