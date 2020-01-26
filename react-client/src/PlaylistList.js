@@ -85,6 +85,7 @@ class PlaylistList extends React.Component {
         let data = { name: this.state.edit_playlist_name, videos: videos_in_playlist };
         Axios.post(this.state.url + "/api/add_playlist", data)
     }
+
     activatePlaylist(event) {
         console.log(event.target);
         for (let i in this.state.playlistList) {
@@ -145,7 +146,7 @@ class PlaylistList extends React.Component {
                         <Playlist playlist={play}
                             quit={this.quitPlaylist}
                             videoList={this.state.videoList}
-                            serverUrl={this.state.serverUrl}
+                            serverUrl={this.state.url}
                             
                         />
                     </Container>

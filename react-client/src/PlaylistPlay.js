@@ -19,6 +19,7 @@ class Playlist extends React.Component {
         this.play_video = this.play_video.bind(this);
         this.quitPlaylist = this.quitPlaylist.bind(this);
         this.editPlaylist=this.editPlaylist.bind(this);
+        this.quitEdit=this.quitEdit.bind(this);
 
     }
     componentDidMount() {
@@ -27,6 +28,9 @@ class Playlist extends React.Component {
     quitPlaylist() {
         console.log("going to quit");
         this.state.quit();
+    }
+    quitEdit(){
+        this.setState({edit:[]})
     }
     play_next_vid() {
         console.log("video ended");
@@ -97,6 +101,7 @@ class Playlist extends React.Component {
                         serverUrl={this.state.serverUrl} 
                         videoList={this.state.videoList} 
                         playlist={_.cloneDeep(this.state.playlist)}
+                        quitEdit={this.quitEdit}
                     />
                 )}
             </Container>
