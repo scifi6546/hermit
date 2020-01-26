@@ -5,15 +5,18 @@ class Playlist extends React.Component {
     constructor(props) {
         super(props)
         this.state = { playlist: _.cloneDeep(props.playlist),
-        playing_video_index:0,shouldUpdate:false}
+        playing_video_index:0,shouldUpdate:false,quit:props.quit}
         this.play_next_vid=this.play_next_vid.bind(this);
         this.play_video=this.play_video.bind(this);
+        this.quitPlaylist=this.quitPlaylist.bind(this);
+        
     }
     componentDidMount(){
        
     }
     quitPlaylist(){
-
+        console.log("going to quit");
+        this.state.quit();
     }
     play_next_vid(){
         console.log("video ended");
@@ -47,7 +50,7 @@ class Playlist extends React.Component {
     render() {
         return (
             <Container>
-                <Button icon onClick={this.state.quitVideo}>
+                <Button icon onClick={this.quitPlaylist}>
                     <Icon name="close" />
                 </Button>
                 <video controls 

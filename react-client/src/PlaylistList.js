@@ -6,6 +6,7 @@ import Playlist from "./PlaylistPlay";
 const state = {
     url: "",
     playlistList: [],
+    permPlaylistList:[],
     videoList: [],
     edit_playlist: [],
     edit_playlist_name:"",
@@ -24,7 +25,7 @@ class PlaylistList extends React.Component {
         this.sumbitPlaylist=this.sumbitPlaylist.bind(this);
         this.edit_playlist_name=this.edit_playlist_name.bind(this);
         this.activatePlaylist=this.activatePlaylist.bind(this);
-
+        this.quitPlaylist=this.quitPlaylist.bind(this);
         this.getVideos();
         
     }
@@ -36,7 +37,9 @@ class PlaylistList extends React.Component {
         console.log("geting playlists")
         console.log(res.data);
         this.setState({
-            playlistList:res.data
+            playlistList:_.cloneDeep(res.data),
+            permPlaylistList:_.cloneDeep(res.data),
+
         })
     }
     async getVideos() {
@@ -95,6 +98,14 @@ class PlaylistList extends React.Component {
         }
 
     }
+    quitPlaylist(){
+        console.log("set state")
+        this.setState({
+            playing_playlist:[],
+            edit_playlist:[],
+            playlistList:_.cloneDeep(this.state.permPlaylistList),
+        })
+    }
     render() {
 
         return (
@@ -131,7 +142,7 @@ class PlaylistList extends React.Component {
                 )}
                 {this.state.playing_playlist.map((play)=>
                 <Container>
-                        <Playlist playlist={play}/>
+                        <Playlist playlist={play} quit={this.quitPlaylist}/>
                 </Container>
                 )}
             </Container>
