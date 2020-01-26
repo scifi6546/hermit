@@ -12,6 +12,9 @@ class Playlist extends React.Component {
     componentDidMount(){
        
     }
+    quitPlaylist(){
+
+    }
     play_next_vid(){
         console.log("video ended");
         let temp_index = this.state.playing_video_index;
@@ -37,20 +40,11 @@ class Playlist extends React.Component {
         if(video_index!=null){
             this.setState({
                 playing_video_index:video_index,
-                shouldUpdate:true,
             })
         }
         this.forceUpdate();
     }
     render() {
-        if(this.state.shouldUpdate){
-            this.state.shouldUpdate=false;
-            /*
-            this.setState({
-                shouldUpdate:false,
-            })*/
-            return(<div></div>)
-        }
         return (
             <Container>
                 <Button icon onClick={this.state.quitVideo}>
