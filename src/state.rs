@@ -69,6 +69,14 @@ impl State{
         }
     }
     
+    pub fn get_thumb_res(&self,token:String)->Result<u32,String>{
+        if self.is_auth(token){
+            return self.video_db.get_thumb_res();
+        }else{
+            return Err("not authorized".to_string());
+        }
+
+    }
     pub fn get_videos(&self,user_token:String)->Result<Vec<videos::VideoHtml>,String>{
         if self.is_auth(user_token){ 
             return Ok(self.video_db.get_vid_html_vec(VIDEO_WEB_PATH.to_string(),"/vid_html/".to_string(),THUMB_WEB_PATH.to_string()));
@@ -200,7 +208,7 @@ impl State{
         pub fn get_users(&self,token:String)->Result<Vec<UserOut>,String>{
             if self.is_auth(token){
                 let mut out:Vec<UserOut> = Vec::new();
-                for user in self.users._users.clone(){
+                for (username,mut user) in self.users.iter(){
                     out.push(UserOut{username:user.name.clone()});
                 }
                 return Ok(out);
@@ -316,8 +324,10 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/get_playlist_all",web::get().to(get_playlist_api))
             .route("/api/get_video",web::post().to(get_video))
             .route("/api/edit_video",web::post().to(edit_video))
+            .route("/api/thumbnail_resolution",web::get().to(get_thumb_res))
             .route("/videos/{video_name}",web::get().to(video_files))
             .route("/files/videos/{video_name}",web::get().to(video_files))
+            
             .service(actix_files::Files::new("/static","./static/static/"))
             .service(actix_files::Files::new("/thumbnails",thumb_dir.clone()))
             .service(actix_files::Files::new("/files/thumbnails",thumb_dir.clone()))
@@ -658,6 +668,35 @@ pub fn video_files(data:web::Data<RwLock<State>>,session:Session,
     }else{
         println!("video error: {}",token_res.err().unwrap());
         return NamedFile::open("empty.txt").unwrap();
+    }
+
+}
+#[derive(Deserialize,Serialize)]
+struct ThumbRes{
+    thumbnail_resolution:u32,
+}
+pub fn get_thumb_res(data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    let state_data = data.write().unwrap();
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let thumb_res = state_data.get_thumb_res(token);
+        if thumb_res.is_ok(){
+            let struct_out = ThumbRes{
+                thumbnail_resolution: thumb_res.ok().unwrap(),
+            };
+            let out_str_res = serde_json::to_string(&struct_out);
+            if out_str_res.is_ok(){
+                return Ok(out_str_res.ok().unwrap());
+            }else{
+                return Ok(out_str_res.err().unwrap().to_string());
+            }
+            
+        }else{
+            return Ok(thumb_res.err().unwrap());
+        }
+    }else{
+        return Ok("not authorized".to_string());
     }
 
 }

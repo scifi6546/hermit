@@ -1,10 +1,9 @@
-FROM rust:1.36-buster
+FROM rust:1.40-buster
 RUN apt update && apt install -y ffmpegthumbnailer npm
 WORKDIR /usr/src/hermit
 COPY . .
 WORKDIR /usr/src/hermit/react-client
 run mkdir /usr/src/hermit/static
-RUN mkdir public
 run echo "" >> public/index.html
 RUN ls
 RUN ls public/
