@@ -6,11 +6,11 @@ import Playlist from "./PlaylistPlay";
 const state = {
     url: "",
     playlistList: [],
-    permPlaylistList:[],
+    permPlaylistList: [],
     videoList: [],
     edit_playlist: [],
-    edit_playlist_name:"",
-    playing_playlist:[]
+    edit_playlist_name: "",
+    playing_playlist: []
 }
 class PlaylistList extends React.Component {
     constructor(props) {
@@ -22,14 +22,14 @@ class PlaylistList extends React.Component {
         this.getVideos = this.getVideos.bind(this);
         this.makePlaylist = this.makePlaylist.bind(this);
         this.selectVideo = this.selectVideo.bind(this);
-        this.sumbitPlaylist=this.sumbitPlaylist.bind(this);
-        this.edit_playlist_name=this.edit_playlist_name.bind(this);
-        this.activatePlaylist=this.activatePlaylist.bind(this);
-        this.quitPlaylist=this.quitPlaylist.bind(this);
+        this.sumbitPlaylist = this.sumbitPlaylist.bind(this);
+        this.edit_playlist_name = this.edit_playlist_name.bind(this);
+        this.activatePlaylist = this.activatePlaylist.bind(this);
+        this.quitPlaylist = this.quitPlaylist.bind(this);
         this.getVideos();
-        
+
     }
-    componentDidMount(){
+    componentDidMount() {
         this.getPlaylists();
     }
     async getPlaylists() {
@@ -37,8 +37,8 @@ class PlaylistList extends React.Component {
         console.log("geting playlists")
         console.log(res.data);
         this.setState({
-            playlistList:_.cloneDeep(res.data),
-            permPlaylistList:_.cloneDeep(res.data),
+            playlistList: _.cloneDeep(res.data),
+            permPlaylistList: _.cloneDeep(res.data),
 
         })
     }
@@ -55,9 +55,9 @@ class PlaylistList extends React.Component {
             edit_playlist: ["foo"]
         })
     }
-    edit_playlist_name(event,target){
+    edit_playlist_name(event, target) {
         this.setState({
-            edit_playlist_name:event.target.value,
+            edit_playlist_name: event.target.value,
         })
     }
     selectVideo(event, target) {
@@ -75,35 +75,35 @@ class PlaylistList extends React.Component {
         }
         this.setState({});
     }
-    sumbitPlaylist(input){
+    sumbitPlaylist(input) {
         console.log(input.target);
-        let videos_in_playlist=[]
+        let videos_in_playlist = []
         for (let i = 0; i < this.state.videoList.length; i++) {
             if (this.state.videoList[i].color === "yellow")
                 videos_in_playlist.push(this.state.videoList[i].path)
         }
-        let data = {name:this.state.edit_playlist_name,videos:videos_in_playlist};
-        Axios.post(this.state.url+"/api/add_playlist",data)
+        let data = { name: this.state.edit_playlist_name, videos: videos_in_playlist };
+        Axios.post(this.state.url + "/api/add_playlist", data)
     }
-    activatePlaylist(event){
+    activatePlaylist(event) {
         console.log(event.target);
-        for(let i in this.state.playlistList){
-            if(this.state.playlistList[i].name==event.target.id){
+        for (let i in this.state.playlistList) {
+            if (this.state.playlistList[i].name == event.target.id) {
                 this.setState({
-                    playing_playlist:[_.cloneDeep(this.state.playlistList[i])],
-                    edit_playlist:[],
-                    playlistList:[]
+                    playing_playlist: [_.cloneDeep(this.state.playlistList[i])],
+                    edit_playlist: [],
+                    playlistList: []
                 })
             }
         }
 
     }
-    quitPlaylist(){
+    quitPlaylist() {
         console.log("set state")
         this.setState({
-            playing_playlist:[],
-            edit_playlist:[],
-            playlistList:_.cloneDeep(this.state.permPlaylistList),
+            playing_playlist: [],
+            edit_playlist: [],
+            playlistList: _.cloneDeep(this.state.permPlaylistList),
         })
     }
     render() {
@@ -130,20 +130,25 @@ class PlaylistList extends React.Component {
 
                             </Segment>
                         )}
-                        
+
                     </Container>
                 )}
-                {this.state.playlistList.map((play)=>
-                            <Segment key={play.name} onClick={this.activatePlaylist} id={play.name}>
-                                
-                                <Image src={play.videos[0].thumbnail_url} id={play.name}/>
-                                {play.name}
-                            </Segment>
+                {this.state.playlistList.map((play) =>
+                    <Segment key={play.name} onClick={this.activatePlaylist} id={play.name}>
+
+                        <Image src={play.videos[0].thumbnail_url} id={play.name} />
+                        {play.name}
+                    </Segment>
                 )}
-                {this.state.playing_playlist.map((play)=>
-                <Container>
-                        <Playlist playlist={play} quit={this.quitPlaylist}/>
-                </Container>
+                {this.state.playing_playlist.map((play) =>
+                    <Container>
+                        <Playlist playlist={play}
+                            quit={this.quitPlaylist}
+                            videoList={this.state.videoList}
+                            serverUrl={this.state.serverUrl}
+                            
+                        />
+                    </Container>
                 )}
             </Container>
         )
