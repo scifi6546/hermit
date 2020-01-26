@@ -40,6 +40,14 @@ Send a POST request to /api/edit_video with the following data
 	}
 }
 ```
+## Edit Playlist
+send a post request to /api/add_playlist with the following data.
+```
+{
+    name:String,//name of playlist
+    videos:Vec<String>,//vec with video path names
+}
+```
 ## Getting video from name
 send a post request with data
 ```
@@ -64,7 +72,8 @@ returns
 ```
 ## Getting a list of playlists
 send a get request to /api/get_playlist_all
-returns ```json
+returns
+```json
 {
 	name:{name of playlist}
 	videos:[
@@ -84,6 +93,8 @@ returns ```json
 		
 	
 }
+```
+
 # Finding out if the user is logged in
 send a get to request to /api/logged_in
 returns
@@ -99,6 +110,23 @@ returns:
 {
 		is_setup: {"true" or "false"}
 }
-
-
-
+```
+## Settings
+Send a post request to /api/settings with the arguments 
+```json
+{
+    action: String,
+    args: String,
+}
+```
+Action is the action to perfrom. Currently only "set_resolution" is a valid action. 
+### Set Resolution
+args will be the resolution to set it to.
+## Query Resolution
+Send a get requet to /api/thumbnail_resolution
+returns
+```json
+{
+	thumbnail_resolution:u32,
+}
+```
