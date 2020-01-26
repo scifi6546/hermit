@@ -157,6 +157,9 @@ impl VideoDB{
     pub fn add_playlist(&mut self, playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
         return self.database.add_playlist(playlist_name,video_paths);
     }
+    pub fn edit_playlist(&mut self,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+        self.database.edit_playlist(playlist_name,video_paths)
+    }
     pub fn get_playlist_all(&self,path_base:String,thumbnail_base:String)->Vec<HtmlPlaylist>{
         let temp_play = self.database.get_playlist_all();
         let mut out_vec = Vec::new();
@@ -185,6 +188,9 @@ impl VideoDB{
     }
     pub fn iter(&self)->std::slice::Iter<'_,db::FileData>{
         return self.database.iter();
+    }
+    pub fn get_thumb_res(&self)->Result<u32,String>{
+        return Ok(self.thumb_res);
     }
 }
 fn is_video(path_str: String)->bool{

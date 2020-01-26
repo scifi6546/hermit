@@ -168,6 +168,20 @@ impl FileDB{
             return Err(res.err().unwrap());
         }
     }
+    pub fn edit_playlist(&mut self,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+        for vid in video_paths.clone(){
+            if !self.is_video(vid.clone()){
+                return Err(format!("vid with path {} does not exist",vid));
+            }
+        }
+        for play in self.playlist.iter_mut(){
+            if play.name==playlist_name{
+                *play=Playlist{name:playlist_name,video_paths:video_paths};
+                return self.write();
+            }
+        }
+        return Err(format!("playlist {} not found",playlist_name));
+    }
     //edit video data using string
     pub fn edit_videodata(&mut self,path:String,change_to: VideoData,name:String)->Result<String,String>{
         println!("editing path");
