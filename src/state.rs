@@ -113,6 +113,12 @@ impl State{
             }
             return Err("not authorized".to_string());
         }
+        pub fn edit_playlist(&mut self,user_token:String,playlist_name:String,video_paths:Vec<String>)->Result<String,String>{
+            if self.is_auth(user_token){
+                return self.video_db.edit_playlist(playlist_name,video_paths);
+            }
+            return Err("not authorized".to_string());
+        }
         pub fn get_playlist_all(&self,user_token:String)->Result<Vec<videos::HtmlPlaylist>,String>{
             if self.is_auth(user_token){
                 return Ok(self.video_db.get_playlist_all("/videos/".to_string(),"/thumbnails/".to_string()));
@@ -321,6 +327,7 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
             .route("/api/settings",web::post().to(settings_api))
             .route("/api/logged_in",web::get().to(get_logged_in))
             .route("/api/add_playlist",web::post().to(add_playlist_api))
+            .route("/api/edit_playlist",web::post().to(edit_playlist_api))
             .route("/api/get_playlist_all",web::get().to(get_playlist_api))
             .route("/api/get_video",web::post().to(get_video))
             .route("/api/edit_video",web::post().to(edit_video))
@@ -598,6 +605,22 @@ fn add_playlist_api(info:web::Json<AddPlaylist>,data:web::Data<RwLock<State>>,se
     }
     
 }
+fn edit_playlist_api(info:web::Json<AddPlaylist>,data:web::Data<RwLock<State>>,session:Session)->Result<String>{
+    let mut state_data = data.write().unwrap();
+    let token_res = session.get("token");
+    if token_res.is_ok(){
+        let token = token_res.ok().unwrap().unwrap();
+        let res = state_data.edit_playlist(token,info.name.clone(),info.videos.clone());
+        if res.is_ok(){
+            return Ok("success".to_string());
+        }else{
+            return Ok(res.err().unwrap());
+        }
+    }else{
+        return Ok("not authorized".to_string());
+    }
+}
+
 fn get_playlist_api(data:web::Data<RwLock<State>>,session:Session)->Result<String>{
 
     let state_data = data.write().unwrap();
