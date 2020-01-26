@@ -5,7 +5,7 @@ class Playlist extends React.Component {
     constructor(props) {
         super(props)
         this.state = { playlist: _.cloneDeep(props.playlist),
-        playing_video_index:0}
+        playing_video_index:0,shouldUpdate:false}
         this.play_next_vid=this.play_next_vid.bind(this);
         this.play_video=this.play_video.bind(this);
     }
@@ -37,19 +37,29 @@ class Playlist extends React.Component {
         if(video_index!=null){
             this.setState({
                 playing_video_index:video_index,
+                shouldUpdate:true,
             })
         }
+        this.forceUpdate();
     }
     render() {
-
+        if(this.state.shouldUpdate){
+            this.state.shouldUpdate=false;
+            /*
+            this.setState({
+                shouldUpdate:false,
+            })*/
+            return(<div></div>)
+        }
         return (
             <Container>
                 <Button icon onClick={this.state.quitVideo}>
                     <Icon name="close" />
                 </Button>
-                <video controls onEnded={this.play_next_vid}>
-                    <source src={this.state.playlist.videos[this.state.playing_video_index].url} />
-                </video>
+                <video controls 
+                    onEnded={this.play_next_vid}
+                    src={this.state.playlist.videos[this.state.playing_video_index].url}
+                />
 
                 <Menu style={{ "overflowX": "scroll", "height": "100%" }}>
 
