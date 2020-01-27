@@ -187,13 +187,14 @@ class Server extends React.Component {
     }
     console.log(res);
   }
-  async updateVideo(url, description, starRating, rating, path) {
+  async updateVideo(url, description, starRating, rating, path,name) {
     let post_struct = {
       path: path,
       data: {
         star_rating: starRating,
         rating: rating,
         description: description,
+        name: name,
       }
     }
     console.log(post_struct);
@@ -302,6 +303,7 @@ class Server extends React.Component {
                   starRating={vid.video_data.star_rating}
                   description={vid.video_data.description}
                   rating={vid.video_data.rating}
+                  name={vid.name}
                 />
               )
 
