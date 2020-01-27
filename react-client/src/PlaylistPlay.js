@@ -3,6 +3,7 @@ import _ from "lodash";
 import { Button, Grid, Icon, Image, Menu, Container, Header } from "semantic-ui-react";
 import PlaylistEdit from "./PlaylistEdit";
 import Axios from 'axios';
+import PlaylistThumbnailList from "./PlaylistThumbnailList"
 class Playlist extends React.Component {
     constructor(props) {
         super(props)
@@ -97,7 +98,7 @@ class Playlist extends React.Component {
                     src={this.state.playlist.videos[this.state.playing_video_index].url}
                 />
 
-                <Menu style={{ "overflowX": "scroll", "height": "100%" }}>
+                <PlaylistThumbnailList>
 
                     {this.state.playlist.videos.map((video) =>
                         <Menu.Item active={this.state.playlist.videos[this.state.playing_video_index].name === video.name} key={video.name} id={video.name} onClick={this.play_video}>
@@ -112,7 +113,7 @@ class Playlist extends React.Component {
 
                         </Menu.Item>
                     )}
-                </Menu>
+                </PlaylistThumbnailList>
                 {this.state.edit.map((temp)=>
                     <PlaylistEdit 
                         serverUrl={this.state.serverUrl} 
