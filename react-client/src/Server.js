@@ -23,8 +23,8 @@ let State = {
     video_dir: "",
     thumb_res: ""
   },
-  playlist:[],
-  settingsShown:[],
+  playlist: [],
+  settingsShown: [],
   setupError: []
 }
 class Server extends React.Component {
@@ -45,8 +45,8 @@ class Server extends React.Component {
     this.updateVideo = this.updateVideo.bind(this);
     this.changeSetup = this.changeSetup.bind(this);
     this.setup = this.setup.bind(this);
-    this.gotoSettings=this.gotoSettings.bind(this);
-    this.gotoPlaylist=this.gotoPlaylist.bind(this);
+    this.gotoSettings = this.gotoSettings.bind(this);
+    this.gotoPlaylist = this.gotoPlaylist.bind(this);
     console.log("state");
     console.log(this.state);
     //do setup stuff
@@ -124,7 +124,7 @@ class Server extends React.Component {
     this.setState({
       videos: temp_vid_arr,
       videosShown: temp_vid_arr,
-      settingsShown:[]
+      settingsShown: []
     })
     console.log(resp);
   }
@@ -158,18 +158,18 @@ class Server extends React.Component {
       videosShown: this.state.videos,
     });
   }
-  gotoSettings(event){
+  gotoSettings(event) {
     this.setState({
-      videosShown:[],
-      playlist:[],
-      settingsShown:["yes"]
+      videosShown: [],
+      playlist: [],
+      settingsShown: ["yes"]
     })
   }
-  gotoPlaylist(event){
+  gotoPlaylist(event) {
     this.setState({
-      videosShown:[],
-      playlist:[""],
-      settingsShown:[]
+      videosShown: [],
+      playlist: [""],
+      settingsShown: []
 
     })
   }
@@ -187,13 +187,14 @@ class Server extends React.Component {
     }
     console.log(res);
   }
-  async updateVideo(url, description, starRating, rating, path) {
+  async updateVideo(url, description, starRating, rating, path, name) {
     let post_struct = {
       path: path,
       data: {
         star_rating: starRating,
         rating: rating,
         description: description,
+        name: name,
       }
     }
     console.log(post_struct);
@@ -208,23 +209,23 @@ class Server extends React.Component {
       <Container>
         <Menu fixed="top" inverted>
           <Container>
-           
-            
-            <Menu.Item header onClick={this.getVideos} as = "a">Videos</Menu.Item>
-            <Menu.Item header onClick={this.gotoPlaylist} as = "a">Playlists</Menu.Item>
-            <Menu.Item header onClick={this.gotoSettings} as = "a">Settings</Menu.Item>
-            
+
+
+            <Menu.Item header onClick={this.getVideos} as="a">Videos</Menu.Item>
+            <Menu.Item header onClick={this.gotoPlaylist} as="a">Playlists</Menu.Item>
+            <Menu.Item header onClick={this.gotoSettings} as="a">Settings</Menu.Item>
+
           </Container>
-          
+
         </Menu>
-        <Container style={{marginTop:'5em'}}>
+        <Container style={{ marginTop: '5em' }}>
           {this.state.loggedIn.map((log) =>
             <Grid textAlign='center' style={{ height: '100vh' }} verticalAlign='middle'>
               <Grid.Column style={{ maxWidth: 450 }}>
                 <Form key={0} error onSubmit={this.login}>
                   <Header>
                     Log In to Account
-            </Header>
+                  </Header>
                   <Form.Input
                     type="text"
                     onChange={this.changeUsername}
@@ -282,11 +283,11 @@ class Server extends React.Component {
 
 
           )}
-          {this.state.settingsShown.map((foo)=>
-            <Settings serverUrl={this.state.serverUrl}/>
+          {this.state.settingsShown.map((foo) =>
+            <Settings serverUrl={this.state.serverUrl} />
           )}
-          {this.state.playlist.map((foo)=>
-            <PlaylistList url={this.state.serverUrl}/>
+          {this.state.playlist.map((foo) =>
+            <PlaylistList url={this.state.serverUrl} />
           )}
           <Container>
             <Segment.Group>
@@ -302,6 +303,7 @@ class Server extends React.Component {
                   starRating={vid.video_data.star_rating}
                   description={vid.video_data.description}
                   rating={vid.video_data.rating}
+                  name={vid.name}
                 />
               )
 
@@ -317,9 +319,6 @@ class Server extends React.Component {
       </Container>
 
     )
-
-
-
   }
 }
 export default Server;

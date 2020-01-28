@@ -93,8 +93,20 @@ returns
 		
 	
 }
+## Add Playlist
+send a post request to /api/add_playlist with the following data.
 ```
-
+{
+    name:String,//name of playlist
+    videos:Vec<String>,//vec with video path names
+}
+## Edit Playlist
+send a post request to /api/edit_playlist with the following data.
+```
+{
+    name:String,//name of playlist
+    videos:Vec<String>,//vec with video path names
+}
 # Finding out if the user is logged in
 send a get to request to /api/logged_in
 returns
