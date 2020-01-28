@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "lodash";
-import { Button, Image, Container, Segment, Form, Grid,Icon } from "semantic-ui-react";
+import { Button, Image, Container, Segment, Form } from "semantic-ui-react";
 import Axios from "axios";
 import Playlist from "./PlaylistPlay";
 const state = {
@@ -121,6 +121,16 @@ class PlaylistList extends React.Component {
                             </Form.Field>
                             <Button type='submit'>Submit</Button>
                         </Form>
+                        {this.state.videoList.map((vid) =>
+                            <Segment key={vid.name} inverted={vid.color} color={vid.color}>
+
+                                <Image src={vid.thumbnail_url} />
+                                <Container color="yellow">
+                                    <Button onClick={this.selectVideo} content='Add To Playlist' icon='add' labelPosition='right' color="red" id={vid.name} />
+                                </Container>
+
+                            </Segment>
+                        )}
 
                     </Container>
                 )}
@@ -137,7 +147,7 @@ class PlaylistList extends React.Component {
                             quit={this.quitPlaylist}
                             videoList={this.state.videoList}
                             serverUrl={this.state.url}
-
+                            
                         />
                     </Container>
                 )}
