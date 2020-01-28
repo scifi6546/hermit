@@ -19,6 +19,8 @@ class PlaylistEdit extends React.Component {
         this.state = _.cloneDeep(state);
         this.state.serverUrl = props.serverUrl;
         this.state.videoList = _.cloneDeep(props.videoList);
+        console.log("constructed video list before");
+        console.log(props.videoList);
         this.state.playlist = _.cloneDeep(props.playlist);
         this.state.quitEdit = props.quitEdit;
         for (let i in this.state.playlist.videos) {
@@ -29,8 +31,8 @@ class PlaylistEdit extends React.Component {
                 }
             }
         }
-        this.setState({});
-
+        console.log("constructed video list after");
+        console.log(this.state.videoList);
 
     }
     quit() {
@@ -49,18 +51,20 @@ class PlaylistEdit extends React.Component {
     }
     shiftUp(event, target) {
         for (let i in this.state.videoList) {
-            if (this.state.videoList[i].name === event.target.id) {
-                if (i > 0) {
-                    let old = this.state.videoList[i];
-                    let new_v = this.state.videoList[i-1];
-                    this.state.videoList[i] = _.cloneDeep(new_v);
-                    this.state.videoList[i-1] = _.cloneDeep(old);
+            let index = Number(i);
+            if (this.state.videoList[index].name === event.target.id) {
+                if (index > 0) {
+                    
+                    let old = this.state.videoList[index];
+                    let new_v = this.state.videoList[index-1];
+                    this.state.videoList[index] = _.cloneDeep(new_v);
+                    this.state.videoList[index-1] = _.cloneDeep(old);
                 }else{
                     
-                    let new_v = this.state.videoList[i];
+                    let new_v = this.state.videoList[index];
                     let old = this.state.videoList[this.state.videoList.length-1];
                     this.state.videoList[this.state.videoList.length-1] = _.cloneDeep(new_v);
-                    this.state.videoList[i] = _.cloneDeep(old);
+                    this.state.videoList[index] = _.cloneDeep(old);
                 }
                 break;
             }
@@ -71,20 +75,21 @@ class PlaylistEdit extends React.Component {
         console.log("id");
         console.log(event.target.id);
         console.log("vid before");
-        console.log(this.state.videoList);
+        console.log(_.cloneDeep(this.state.videoList));
         for (let i in this.state.videoList) {
-            if (this.state.videoList[i].name === event.target.id) {
-                console.log("found video i:")
-                console.log(i);
-                if (i < this.state.videoList.length-1) {
-                    let old = _.cloneDeep(this.state.videoList[i]);
-                    let new_v = _.cloneDeep(this.state.videoList[i+1]);
-                    this.state.videoList[i ] = _.cloneDeep(new_v);
-                    this.state.videoList[i+1] = _.cloneDeep(old);
+            let index = Number(i);
+            if (this.state.videoList[index].name === event.target.id) {
+                if (index < this.state.videoList.length-1) {
+                   
+                    let old = _.cloneDeep(this.state.videoList[index]);
+                    let new_v = _.cloneDeep(this.state.videoList[index+1]);
+                    this.state.videoList[index] = _.cloneDeep(new_v);
+                    this.state.videoList[index+1] = _.cloneDeep(old);
                 }else{
-                    let old = this.state.videoList[i];
+                   
+                    let old = this.state.videoList[index];
                     let new_v = this.state.videoList[0];
-                    this.state.videoList[i ] = _.cloneDeep(new_v);
+                    this.state.videoList[index] = _.cloneDeep(new_v);
                     this.state.videoList[0] = _.cloneDeep(old); 
                 }
                 break;
