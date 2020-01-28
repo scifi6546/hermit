@@ -13,8 +13,8 @@ class PlaylistEdit extends React.Component {
         this.selectVideo = this.selectVideo.bind(this);
         this.sumbitPlaylist = this.sumbitPlaylist.bind(this);
         this.quit = this.quit.bind(this);
-        this.shiftUp=this.shiftUp.bind(this);
-        this.shiftDown=this.shiftDown.bind(this);
+        this.shiftUp = this.shiftUp.bind(this);
+        this.shiftDown = this.shiftDown.bind(this);
 
         this.state = _.cloneDeep(state);
         this.state.serverUrl = props.serverUrl;
@@ -54,16 +54,16 @@ class PlaylistEdit extends React.Component {
             let index = Number(i);
             if (this.state.videoList[index].name === event.target.id) {
                 if (index > 0) {
-                    
+
                     let old = this.state.videoList[index];
-                    let new_v = this.state.videoList[index-1];
+                    let new_v = this.state.videoList[index - 1];
                     this.state.videoList[index] = _.cloneDeep(new_v);
-                    this.state.videoList[index-1] = _.cloneDeep(old);
-                }else{
-                    
+                    this.state.videoList[index - 1] = _.cloneDeep(old);
+                } else {
+
                     let new_v = this.state.videoList[index];
-                    let old = this.state.videoList[this.state.videoList.length-1];
-                    this.state.videoList[this.state.videoList.length-1] = _.cloneDeep(new_v);
+                    let old = this.state.videoList[this.state.videoList.length - 1];
+                    this.state.videoList[this.state.videoList.length - 1] = _.cloneDeep(new_v);
                     this.state.videoList[index] = _.cloneDeep(old);
                 }
                 break;
@@ -79,18 +79,18 @@ class PlaylistEdit extends React.Component {
         for (let i in this.state.videoList) {
             let index = Number(i);
             if (this.state.videoList[index].name === event.target.id) {
-                if (index < this.state.videoList.length-1) {
-                   
+                if (index < this.state.videoList.length - 1) {
+
                     let old = _.cloneDeep(this.state.videoList[index]);
-                    let new_v = _.cloneDeep(this.state.videoList[index+1]);
+                    let new_v = _.cloneDeep(this.state.videoList[index + 1]);
                     this.state.videoList[index] = _.cloneDeep(new_v);
-                    this.state.videoList[index+1] = _.cloneDeep(old);
-                }else{
-                   
+                    this.state.videoList[index + 1] = _.cloneDeep(old);
+                } else {
+
                     let old = this.state.videoList[index];
                     let new_v = this.state.videoList[0];
                     this.state.videoList[index] = _.cloneDeep(new_v);
-                    this.state.videoList[0] = _.cloneDeep(old); 
+                    this.state.videoList[0] = _.cloneDeep(old);
                 }
                 break;
             }
@@ -127,15 +127,18 @@ class PlaylistEdit extends React.Component {
                 {this.state.videoList.map((vid) =>
                     <Segment key={vid.name} inverted={vid.color} color={vid.color}>
                         <Grid>
-                            <Grid.Column>
+                            <Grid.Column width={1} style={{ "display": "flex", "flexDirection": "column", "justifyContent": "space-evenly" }}>
+
                                 <Button icon id={vid.name} onClick={this.shiftUp}>
-                                    <Icon name="caret up" id={vid.name}/>
+                                    <Icon name="caret up" id={vid.name} />
                                 </Button>
                                 <Button icon id={vid.name} onClick={this.shiftDown}>
-                                    <Icon name="caret down" id={vid.name}/>
+                                    <Icon name="caret down" id={vid.name} />
                                 </Button>
+
                             </Grid.Column>
-                            <Grid.Column>
+                            <Grid.Column width={10}>
+
                                 <Image src={vid.thumbnail_url} />
                                 <Container color="yellow">
                                     <Button onClick={this.selectVideo} content='Add To Playlist' icon='add' labelPosition='right' color="red" id={vid.name} />
