@@ -238,7 +238,7 @@ impl State{
 		self.config_file.users=users_write;
 		let res = config::write_conf(self.config_file.clone());
                 if res.is_ok(){
-                    return Ok("sucess".to_string());;
+                    return Ok("sucess".to_string());
                 }else{
                     return Err("error in writing".to_string()); 
                 }
@@ -480,7 +480,7 @@ fn get_videos(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
         }
 }
 #[derive(Serialize)]
-struct loggedIn{
+struct LoggedIn{
     logged_in:String
 }
 pub fn get_logged_in(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
@@ -492,19 +492,19 @@ pub fn get_logged_in(data:web::Data<RwLock<State>>,session:Session)->impl Respon
             let state_data=data.read().unwrap();
             let is_auth = state_data.is_auth(token);
             if is_auth{
-                let json = loggedIn{logged_in:"true".to_string()};
+                let json = LoggedIn{logged_in:"true".to_string()};
                 return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
             }else{
-                let json = loggedIn{logged_in:"false".to_string()};
+                let json = LoggedIn{logged_in:"false".to_string()};
                 return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
             }
         }else{
-            let json = loggedIn{logged_in:"false".to_string()};
+            let json = LoggedIn{logged_in:"false".to_string()};
             return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
 
         }
     }else{
-        let json = loggedIn{logged_in:"false".to_string()};
+        let json = LoggedIn{logged_in:"false".to_string()};
         return HttpResponse::Ok().body(serde_json::to_string(&json).unwrap());
     }
 }
