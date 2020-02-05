@@ -17,6 +17,15 @@ pub struct Metadata{
     pub video_data:VideoData,
     //to add stuff
 }
+fn new_metadata()->Metadata{
+    return Metadata{thumbnail_path:"".to_string(),thumbnail_name:"".to_string(),
+        
+        thumbnail_res:0,video_data:VideoData{
+            star_rating:0,
+            rating: "".to_string(),
+            description:"".to_string(),
+        }}
+}
 #[derive(Clone,Serialize,Deserialize)]
 pub struct FileData{
     pub file_name: String,
@@ -62,8 +71,10 @@ enum DirectoryTypes{
 #[derive(Clone)]
 pub struct VideoDB{
     database:gulkana::DataStructure<String,FileData,DirectoryTypes>,
+    database_path:Option<String>,
     thumb_dir:String,
     thumb_res:u32,
+    source_dir:Option<String>,
 }
 #[derive(Clone,Serialize,Deserialize)]
 pub struct HtmlPlaylist{
@@ -102,9 +113,19 @@ impl VideoDB{
         }
         return Ok("sucessfully made thumbnails".to_string());
     }
+    pub fn add_video(&mut self,file_name:String,video_data:FileData)->Result<String,String>{
+        let res = self.database.set_data(&file_name,&video_data);
+        if res.is_ok(){
+            return Ok("".to_string()); 
+        }else{
+            return Err("add failed".to_string());
+        }
+    }
     pub fn get_vid_html_vec(&self,path_base:String,html_path_base:String,thumbnail_base:String)->Vec<VideoHtml>{
         let mut vec_out:Vec<VideoHtml>=Vec::new();
+        println!("starting to get videos");
         for (_key,file) in self.database.iter_data(){
+            println!("grabbed video");
             if file.is_video(){
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
@@ -249,6 +270,22 @@ impl VideoDB{
     pub fn get_thumb_res(&self)->Result<u32,String>{
         return Ok(self.thumb_res);
     }
+    pub fn refresh(&mut self){
+        let source = self.source_dir.clone();
+        let db_path = self.database_path.clone();
+        if source.is_some() && db_path.is_some(){
+            let db_res = db_from_dir(source.unwrap()
+                ,self.thumb_dir.clone(),self.database_path.clone().unwrap(),self.thumb_res);
+            if db_res.is_ok(){
+                let db = db_res.ok().unwrap();
+                let join_res = self.database.right_join(&db.database);
+                if join_res.is_ok(){
+                    self.database=join_res.ok().unwrap();
+                }
+                
+            }
+        }
+    }
 }
 fn is_video(path_str: String)->bool{
     let path = Path::new(&path_str);
@@ -264,9 +301,15 @@ fn is_video(path_str: String)->bool{
         return false;
     }
 }
-pub fn new(_read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)->Result<VideoDB,String>{
+pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)->Result<VideoDB,String>{
     let make_db = gulkana::backed_datastructure(&database_path);
-    let mut video_db=VideoDB{database:make_db,thumb_dir:thumb_dir,thumb_res:thumb_res};
+    let mut video_db=VideoDB{database:make_db,
+        database_path:Some(database_path),
+        thumb_dir:thumb_dir,
+        thumb_res:thumb_res,
+        source_dir:Some(read_dir),
+    };
+    video_db.refresh();
     let thumb_res = video_db.make_thumbnails();
     if thumb_res.is_ok(){
         return Ok(video_db);
@@ -274,8 +317,39 @@ pub fn new(_read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)
         return Err(thumb_res.err().unwrap());
     }
 }
+fn db_from_dir(read_dir:String,_thumb_dir:String,_database_path:String,_thumb_res:u32)->Result<VideoDB,String>{
+    let dir_iter_res = Path::new(&read_dir).read_dir();
+    if dir_iter_res.is_ok(){
+        let mut db = empty();
+        for file in dir_iter_res.unwrap(){
+            if file.is_ok(){
+                let file_final=file.unwrap();
+                let final_path=file_final.path();
+                let file_name = file_final.file_name().into_string().unwrap();
+                let file_path=final_path.clone().into_os_string().into_string().unwrap();
+                let mut extension="".to_string();
+                let file_ext_res = final_path.extension();
+                if file_ext_res.is_some(){
+                    extension=file_ext_res.unwrap().to_str().unwrap().to_string();
+                }
+                println!("file: {:?}",file_name);
+                
+                let vid = FileData{file_name:file_name.clone(),file_path:file_path.clone(),
+                    extension:extension,
+                    name:file_name,metadata:new_metadata()};
+                db.add_video(file_path,vid);
+            }
+        }
+        return Ok(db);
+
+    }else{
+        return Err("path not directory".to_string());
+    }
+
+
+}
 pub fn empty()->VideoDB{
-    return VideoDB{database:gulkana::new_datastructure(None),thumb_dir:"".to_string(),thumb_res:0};
+    return VideoDB{database:gulkana::new_datastructure(None),database_path:None,thumb_dir:"".to_string(),thumb_res:0,source_dir:None};
 }
 #[cfg(test)]
 mod test{
