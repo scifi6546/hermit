@@ -3,13 +3,13 @@ use std::path::Path;
 use gulkana;
 
 mod thumbnail;
-#[derive(Clone,Serialize,Deserialize)]
+#[derive(Clone,Serialize,Deserialize,Debug)]
 pub struct VideoData{
     pub star_rating:u32,//star rating (eg 5 or 4 stars)
     pub rating:String,//normal rating (eg pg, pg13)
     pub description:String,//Dexcription Of video
 }
-#[derive(Clone,Serialize,Deserialize)]
+#[derive(Clone,Serialize,Deserialize,Debug)]
 pub struct Metadata{
     pub thumbnail_name:String,
     pub thumbnail_path:String,
@@ -26,7 +26,7 @@ fn new_metadata()->Metadata{
             description:"".to_string(),
         }}
 }
-#[derive(Clone,Serialize,Deserialize)]
+#[derive(Clone,Serialize,Deserialize,Debug)]
 pub struct FileData{
     pub file_name: String,
     pub name: String,
@@ -278,15 +278,33 @@ impl VideoDB{
                 ,self.thumb_dir.clone(),self.database_path.clone().unwrap(),self.thumb_res);
             if db_res.is_ok(){
                 let db = db_res.ok().unwrap();
-                let join_res = self.database.right_join(&db.database);
+                let join_res = gulkana::right_join(&db.database,&self.database);
+                
                 if join_res.is_ok(){
-                    self.database=join_res.ok().unwrap();
+                    let join = join_res.ok().unwrap();
+                    println!("join contents");
+                    for (key,data) in join.iter_data(){
+                        println!("{:?}",data);
+
+                    }
+                    self.database=join;
+                }else{
+                    println!("join res is not ok");
                 }
                 
             }
         }
+        self.print_contents();
+    }
+    pub fn print_contents(&self){
+        println!("data after refresh: ");
+        for (_key,data) in self.database.iter_data(){
+            println!("{:?}",data);
+        }
+
     }
 }
+/*
 fn is_video(path_str: String)->bool{
     let path = Path::new(&path_str);
     let ext_opt = path.extension();
@@ -300,7 +318,7 @@ fn is_video(path_str: String)->bool{
     }else{
         return false;
     }
-}
+}*/
 pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)->Result<VideoDB,String>{
     let make_db = gulkana::backed_datastructure(&database_path);
     let mut video_db=VideoDB{database:make_db,
@@ -340,6 +358,8 @@ fn db_from_dir(read_dir:String,_thumb_dir:String,_database_path:String,_thumb_re
                 db.add_video(file_path,vid);
             }
         }
+        db.print_contents();
+
         return Ok(db);
 
     }else{
