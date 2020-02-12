@@ -273,12 +273,14 @@ impl VideoDB{
     pub fn refresh(&mut self){
         let source = self.source_dir.clone();
         let db_path = self.database_path.clone();
+        println!("prejoin contents");
+        self.print_contents();
         if source.is_some() && db_path.is_some(){
             let db_res = db_from_dir(source.unwrap()
                 ,self.thumb_dir.clone(),self.database_path.clone().unwrap(),self.thumb_res);
             if db_res.is_ok(){
                 let db = db_res.ok().unwrap();
-                let join_res = gulkana::right_join(&db.database,&self.database);
+                let join_res = gulkana::right_join(&self.database,&db.database);
                 
                 if join_res.is_ok(){
                     let join = join_res.ok().unwrap();
@@ -320,6 +322,7 @@ fn is_video(path_str: String)->bool{
     }
 }*/
 pub fn new(read_dir:String,thumb_dir:String,database_path:String,thumb_res:u32)->Result<VideoDB,String>{
+    println!("db path: {}",database_path);
     let make_db = gulkana::backed_datastructure(&database_path);
     let mut video_db=VideoDB{database:make_db,
         database_path:Some(database_path),
