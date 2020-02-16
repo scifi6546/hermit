@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 mod legacy_db;
 use gulkana;
-
+use std::fs;
 mod thumbnail;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct VideoData {
@@ -325,9 +325,11 @@ impl VideoDB {
             let mut vid_vec = vec![];
             for key in linked_keys {
                 let vid_res =
-                    self.get_vid_html(path_base.clone(), key.clone(), thumbnail_base.clone());
+                    self.get_vid_html_from_path(path_base.clone(), thumbnail_base.clone(),key.clone());
                 if vid_res.is_ok() {
                     vid_vec.push(vid_res.ok().unwrap());
+                }else{
+                    println!("error: {}",vid_res.err().unwrap());
                 }
             }
             playlist_list.push(HtmlPlaylist {
@@ -352,11 +354,12 @@ impl VideoDB {
     pub fn get_thumb_res(&self) -> Result<u32, String> {
         return Ok(self.thumb_res);
     }
-    pub fn refresh(&mut self) {
+    pub fn refresh(&mut self){
         let source = self.source_dir.clone();
         let db_path = self.database_path.clone();
         println!("prejoin contents");
         self.print_contents();
+        let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
         if source.is_some() && db_path.is_some() {
             let db_res = db_from_dir(
                 source.unwrap(),
@@ -379,6 +382,13 @@ impl VideoDB {
                     println!("join res is not ok");
                 }
             }
+        }
+        for play in play_before_join{
+            let mut vid_name_vec = vec![];
+            for vid in play.videos{
+                vid_name_vec.push(vid.path);
+            }
+            self.add_playlist(play.name,vid_name_vec);
         }
         self.print_contents();
     }
@@ -417,6 +427,7 @@ pub fn new(
     println!("db path: {}", database_path);
     let make_db_res = gulkana::backed_datastructure(&database_path);
     if make_db_res.is_ok() {
+        println!("CORRECTLY MADE DATASTRUCTURE");
         let make_db = make_db_res.ok().unwrap();
 
         let mut video_db = VideoDB {
@@ -434,7 +445,9 @@ pub fn new(
             return Err(thumb_res.err().unwrap());
         }
     } else {
+        println!("READING FROM LEGACY\n\n");
         let parse_res = legacy_db::from_path(database_path.clone());
+        fs::remove_file(database_path.clone());
         if parse_res.is_ok() {
             return from_legacy(
                 parse_res.ok().unwrap(),
