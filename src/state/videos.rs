@@ -283,14 +283,18 @@ impl VideoDB {
         let res = self.database.get(&path);
         if res.is_ok() {
             let mut data = res.ok().unwrap().clone();
-
+            data.name=to_change_to.name;
             data.metadata.video_data = VideoData {
                 rating: to_change_to.rating,
                 star_rating: to_change_to.star_rating,
                 description: to_change_to.description,
             };
-            self.database.set_data(&path, &data);
+            let res = self.database.set_data(&path, &data);
+            if res.is_ok(){
             return Ok("success".to_string());
+            }else{
+                return Err("Failed to Update Video".to_string());
+            }
         } else {
             return Err("file not found".to_string());
         }
