@@ -171,7 +171,7 @@ impl UserVec{
 }
 pub fn new()->UserVec{
 
-    return UserVec{_users:gulkana::new_datastructure(None)}; 
+    return UserVec{_users:gulkana::new_datastructure()}; 
 }
 fn get_salt()->[u8;20]{
     let mut array:[u8;20]=[0;20];
