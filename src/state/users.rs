@@ -1,16 +1,20 @@
 use argon2::{self,Config};
+use serde::{Serialize};
+
 use gulkana::DataStructure;
-#[derive(Clone)]
+#[derive(Clone,Serialize)]
 pub struct User{
     pub name: String,
     pub password: String,
     pub token: String 
 }
 type Username=String;
+#[derive(Clone,Serialize)]
+pub enum Usertypes {}
 #[derive(Clone)]
 pub struct UserVec{
     //key is username
-    pub _users: DataStructure<Username,User>,
+    pub _users: DataStructure<Username,User,Usertypes>,
     //_users:Vec<User>
 }
 #[derive(Clone)]
@@ -49,14 +53,27 @@ impl UserVec{
         }
     }
     pub fn logout(&mut self,token:String)->Result<String,String>{
-        for (_username,mut user) in self._users.iter_data_mut(){
+        let mut to_change = vec![];
+        for (username,user) in self._users.iter_data(){
 
             if user.token==token{
+                let mut user_out = user.clone();
                 //let mut mut_user = user.clone();
-                user.token="".to_string();
+                user_out.token="".to_string();
+                to_change.push((username.clone(),user_out));
                 //self._users.set_data(username,&mut_user);
-                return Ok("success".to_string());
             }
+        }
+        let updated = to_change.len()>0;
+        for (username,user) in to_change{
+            let res = self._users.set_data(&username,&user);
+            if res.is_err(){
+                return Err("failed to remove token".to_string());
+            }
+        }
+        if updated{
+                return Ok("success".to_string());
+
         }
         return Err("user not found".to_string());
     }
@@ -65,7 +82,6 @@ impl UserVec{
         let user_res = self._users.get(&username_in.clone());
         if user_res.is_ok(){
             let mut user = user_res.ok().unwrap().clone();
-            let config=Config::default();
 
             if argon2::verify_encoded(&user.password,
                 &password.clone().into_bytes()).unwrap(){
@@ -115,6 +131,7 @@ impl UserVec{
         return false;
 
     }
+    #[allow(dead_code)]
     pub fn get_token(&self,username_in:String)->Result<String,String>{
         for (_username,user) in self._users.iter_data(){
             if username_in==user.name{
@@ -124,6 +141,7 @@ impl UserVec{
         return Err("user not found".to_string());
     }
     //checks if the structer is empty
+    #[allow(dead_code)]
     pub fn is_empty(&self)->bool{
         self._users.len()==0
     }
@@ -150,13 +168,13 @@ impl UserVec{
         }
         return vec_out;
     }
-    pub fn iter(&self)->gulkana::DataNodeIter<'_, std::string::String,User>{
+    pub fn iter(&self)->gulkana::DataNodeIter<'_, std::string::String,User,Usertypes>{
         return self._users.iter_data()
     }
 }
 pub fn new()->UserVec{
 
-    return UserVec{_users:gulkana::new_datastructure()}; 
+    return UserVec{_users:gulkana::new_datastructure(None)}; 
 }
 fn get_salt()->[u8;20]{
     let mut array:[u8;20]=[0;20];
