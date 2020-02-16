@@ -10,7 +10,8 @@ const state = {
     videoList: [],
     edit_playlist: [],
     edit_playlist_name: "",
-    playing_playlist: []
+    playing_playlist: [],
+    thumb_url: "",
 }
 class PlaylistList extends React.Component {
     constructor(props) {
@@ -36,6 +37,14 @@ class PlaylistList extends React.Component {
         let res = await Axios.get(this.state.url + "/api/get_playlist_all");
         console.log("geting playlists")
         console.log(res.data);
+        let playlist = res.data;
+        for(let i in playlist){
+            try {
+                playlist[i].thumbnail_url = playlist[i].videos[0].thumbnail_url;
+            } catch (error) {
+                playlist[i].thumbnail_url = "invalid.png";
+            }
+        }
         this.setState({
             playlistList: _.cloneDeep(res.data),
             permPlaylistList: _.cloneDeep(res.data),
@@ -137,7 +146,7 @@ class PlaylistList extends React.Component {
                 {this.state.playlistList.map((play) =>
                     <Segment key={play.name} onClick={this.activatePlaylist} id={play.name}>
 
-                        <Image src={play.videos[0].thumbnail_url} id={play.name} />
+                        <Image src={play.thumbnail_url} id={play.name} />
                         {play.name}
                     </Segment>
                 )}
@@ -147,7 +156,7 @@ class PlaylistList extends React.Component {
                             quit={this.quitPlaylist}
                             videoList={this.state.videoList}
                             serverUrl={this.state.url}
-                            
+
                         />
                     </Container>
                 )}
