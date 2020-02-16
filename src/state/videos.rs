@@ -525,7 +525,10 @@ pub fn from_legacy(
     if db_res.is_ok() {
         let mut db = db_res.ok().unwrap();
         for vid in legacy_db.iter() {
-            db.add_video(vid.file_name.clone(), FileData::from(vid.clone()));
+            let res = db.add_video(vid.file_name.clone(), FileData::from(vid.clone()));
+            if(res.is_err()){
+                println!("Failedto add video");
+            }
         }
         let playlists = legacy_db.get_playlist_all();
         for play in playlists {
