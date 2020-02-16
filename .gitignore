@@ -1,4 +1,5 @@
 /target
+db_leg.json
 .vscode
 config.json
 *.pem
