@@ -8,3 +8,5 @@ Cargo.lock
 static/*
 db.json
 thumbnails/
+db_leg.json
+db_dep.json
