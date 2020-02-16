@@ -90,9 +90,13 @@ pub struct VideoEditData {
     pub name: String,        //name to change to
 }
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
+struct PlaylistMeta{
+
+}
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 enum DirectoryTypes {
     Directory,
-    Playlist,
+    Playlist(PlaylistMeta),
 }
 #[derive(Clone)]
 pub struct VideoDB {
@@ -298,7 +302,7 @@ impl VideoDB {
     ) -> Result<String, String> {
         let res =
             self.database
-                .overwrite_link(&playlist_name, &video_paths, DirectoryTypes::Playlist);
+                .overwrite_link(&playlist_name, &video_paths, DirectoryTypes::Playlist(PlaylistMeta{}));
         if res.is_ok() {
             return Ok("success".to_string());
         } else {
@@ -312,7 +316,7 @@ impl VideoDB {
     ) -> Result<String, String> {
         let res =
             self.database
-                .overwrite_link(&playlist_name, &video_paths, DirectoryTypes::Playlist);
+                .overwrite_link(&playlist_name, &video_paths, DirectoryTypes::Playlist(PlaylistMeta{}));
         if res.is_ok() {
             return Ok("success".to_string());
         } else {
@@ -321,7 +325,7 @@ impl VideoDB {
     }
     pub fn get_playlist_all(&self, path_base: String, thumbnail_base: String) -> Vec<HtmlPlaylist> {
         let mut playlist_list = vec![];
-        for (link, linked_keys) in self.database.iter_link_type(&DirectoryTypes::Playlist) {
+        for (link, linked_keys) in self.database.iter_link_type(&DirectoryTypes::Playlist(PlaylistMeta{})) {
             let mut vid_vec = vec![];
             for key in linked_keys {
                 let vid_res =
@@ -369,7 +373,7 @@ impl VideoDB {
             );
             if db_res.is_ok() {
                 let db = db_res.ok().unwrap();
-                let join_res = gulkana::right_join(&self.database, &db.database);
+                let join_res = self.database.right_join(&db.database);
 
                 if join_res.is_ok() {
                     let join = join_res.ok().unwrap();
@@ -378,6 +382,7 @@ impl VideoDB {
                         println!("{:?}", data);
                     }
                     self.database = join;
+                    self.database.make_backed(&db_path.unwrap());
                 } else {
                     println!("join res is not ok");
                 }
@@ -427,8 +432,11 @@ pub fn new(
     println!("db path: {}", database_path);
     let make_db_res = gulkana::backed_datastructure(&database_path);
     if make_db_res.is_ok() {
-        println!("CORRECTLY MADE DATASTRUCTURE");
+        println!("made db sucessfully");
         let make_db = make_db_res.ok().unwrap();
+        assert!(Path::new(&database_path).exists());
+        
+        
 
         let mut video_db = VideoDB {
             database: make_db,
@@ -437,6 +445,8 @@ pub fn new(
             thumb_res: thumb_res,
             source_dir: Some(read_dir),
         };
+        println!("contents from disk:");
+        video_db.print_contents();
         video_db.refresh();
         let thumb_res = video_db.make_thumbnails();
         if thumb_res.is_ok() {
@@ -445,10 +455,10 @@ pub fn new(
             return Err(thumb_res.err().unwrap());
         }
     } else {
-        println!("READING FROM LEGACY\n\n");
         let parse_res = legacy_db::from_path(database_path.clone());
-        fs::remove_file(database_path.clone());
+        
         if parse_res.is_ok() {
+            fs::remove_file(database_path.clone());
             return from_legacy(
                 parse_res.ok().unwrap(),
                 read_dir,
