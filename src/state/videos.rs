@@ -167,9 +167,7 @@ impl VideoDB {
         thumbnail_base: String,
     ) -> Vec<VideoHtml> {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
-        println!("starting to get videos");
         for (_key, file) in self.database.iter_data() {
-            println!("grabbed video");
             if file.is_video() {
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
@@ -182,7 +180,6 @@ impl VideoDB {
                     star_rating: file.metadata.video_data.star_rating,
                     description: file.metadata.video_data.description.clone(),
                 };
-                println!("video_description: {}", video_data.description);
                 let mut thumbnail_name = thumbnail_base.clone();
                 thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
                 vec_out.push(VideoHtml {
@@ -336,8 +333,6 @@ impl VideoDB {
                     self.get_vid_html_from_path(path_base.clone(), thumbnail_base.clone(),key.clone());
                 if vid_res.is_ok() {
                     vid_vec.push(vid_res.ok().unwrap());
-                }else{
-                    println!("error: {}",vid_res.err().unwrap());
                 }
             }
             playlist_list.push(HtmlPlaylist {
@@ -365,8 +360,6 @@ impl VideoDB {
     pub fn refresh(&mut self){
         let source = self.source_dir.clone();
         let db_path = self.database_path.clone();
-        println!("prejoin contents");
-        self.print_contents();
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
         if source.is_some() && db_path.is_some() {
             let db_res = db_from_dir(
@@ -381,15 +374,9 @@ impl VideoDB {
 
                 if join_res.is_ok() {
                     let join = join_res.ok().unwrap();
-                    println!("join contents");
-                    for (key, data) in join.iter_data() {
-                        println!("{:?}", data);
-                    }
                     self.database = join;
                     self.database.make_backed(&db_path.unwrap());
-                } else {
-                    println!("join res is not ok");
-                }
+                } 
             }
         }
         for play in play_before_join{
@@ -397,14 +384,6 @@ impl VideoDB {
             for vid in play.videos{
                 vid_name_vec.push(vid.path);
             }
-            self.add_playlist(play.name,vid_name_vec);
-        }
-        self.print_contents();
-    }
-    pub fn print_contents(&self) {
-        println!("data after refresh: ");
-        for (_key, data) in self.database.iter_data() {
-            println!("{:?}", data);
         }
     }
 }
@@ -433,10 +412,8 @@ pub fn new(
     database_path: String,
     thumb_res: u32,
 ) -> Result<VideoDB, String> {
-    println!("db path: {}", database_path);
     let make_db_res = gulkana::backed_datastructure(&database_path);
     if make_db_res.is_ok() {
-        println!("made db sucessfully");
         let make_db = make_db_res.ok().unwrap();
         assert!(Path::new(&database_path).exists());
         
@@ -449,8 +426,6 @@ pub fn new(
             thumb_res: thumb_res,
             source_dir: Some(read_dir),
         };
-        println!("contents from disk:");
-        video_db.print_contents();
         video_db.refresh();
         let thumb_res = video_db.make_thumbnails();
         if thumb_res.is_ok() {
@@ -495,7 +470,6 @@ fn db_from_dir(
                 if file_ext_res.is_some() {
                     extension = file_ext_res.unwrap().to_str().unwrap().to_string();
                 }
-                println!("file: {:?}", file_name);
 
                 let vid = FileData {
                     file_name: file_name.clone(),
@@ -507,7 +481,6 @@ fn db_from_dir(
                 db.add_video(file_path, vid);
             }
         }
-        db.print_contents();
 
         return Ok(db);
     } else {
@@ -526,14 +499,12 @@ pub fn from_legacy(
         let mut db = db_res.ok().unwrap();
         for vid in legacy_db.iter() {
             let res = db.add_video(vid.file_name.clone(), FileData::from(vid.clone()));
-            if(res.is_err()){
-                println!("Failedto add video");
-            }
         }
         let playlists = legacy_db.get_playlist_all();
         for play in playlists {
             db.add_playlist(play.name, play.video_paths);
         }
+
         db.refresh();
         return Ok(db);
     } else {
