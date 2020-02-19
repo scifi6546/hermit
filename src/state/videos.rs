@@ -4,6 +4,13 @@ mod legacy_db;
 use gulkana;
 use std::fs;
 mod thumbnail;
+#[derive(Clone, Serialize, Deserialize, Debug,std::cmp::PartialEq)]
+pub enum FileTypes{
+    Video,
+    GbaRom,
+    Unknown,
+
+}
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct VideoData {
     pub star_rating: u32,    //star rating (eg 5 or 4 stars)
@@ -38,26 +45,36 @@ pub struct FileData {
     pub file_path: String,
     pub extension: String,
     pub metadata: Metadata,
+    pub file_type:FileTypes,
 }
 impl FileData {
-    pub fn is_video(&self) -> bool {
+    pub fn gen_file_type(&mut self)->FileTypes{
         if self.extension == "m4v".to_string()
             || self.extension == "ogg".to_string()
             || self.extension == "mp4".to_string()
         {
-            return true;
-        } else {
-            return false;
+            self.file_type=FileTypes::Video;
+            return FileTypes::Video;
+        } else if self.extension==".gba".to_string() {
+            self.file_type=FileTypes::GbaRom;
+            return FileTypes::GbaRom;
+        }else{
+            self.file_type=FileTypes::Unknown;
+            return FileTypes::Unknown;
         }
+
+
     }
 }
 impl From<legacy_db::FileData> for FileData {
     fn from(f_in: legacy_db::FileData) -> FileData {
-        return FileData {
+
+        let mut file =  FileData {
             file_name: f_in.file_name,
             name: f_in.name,
             file_path: f_in.file_path,
             extension: f_in.extension,
+            file_type:FileTypes::Video,
             metadata: Metadata {
                 thumbnail_name: f_in.metadata.thumbnail_name,
                 thumbnail_path: f_in.metadata.thumbnail_path,
@@ -69,6 +86,8 @@ impl From<legacy_db::FileData> for FileData {
                 },
             },
         };
+        file.gen_file_type();
+        return file;
     }
 }
 
@@ -90,11 +109,11 @@ pub struct VideoEditData {
     pub name: String,        //name to change to
 }
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-struct PlaylistMeta{
+pub struct PlaylistMeta{
 
 }
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
-enum DirectoryTypes {
+pub enum DirectoryTypes {
     Directory,
     Playlist(PlaylistMeta),
 }
@@ -111,13 +130,6 @@ pub struct HtmlPlaylist {
     pub videos: Vec<VideoHtml>, //paths of all videos, path is a unique identifier
     pub name: String,           //name of playlist
 }
-fn empty_video_rating() -> VideoData {
-    return VideoData {
-        star_rating: 0,
-        rating: "".to_string(),
-        description: "".to_string(),
-    };
-}
 impl VideoDB {
     fn make_thumbnails(&mut self) -> Result<String, String> {
         let mut keys = vec![];
@@ -129,7 +141,7 @@ impl VideoDB {
             let file_res = self.database.get(&key);
             if file_res.is_ok() {
                 let mut file = file_res.ok().unwrap().clone();
-                if file.is_video() {
+                if file.file_type==FileTypes::Video {
                     let thumb_res = thumbnail::make_thumb(
                         file.file_path.clone(),
                         self.thumb_dir.clone(),
@@ -168,7 +180,7 @@ impl VideoDB {
     ) -> Vec<VideoHtml> {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
         for (_key, file) in self.database.iter_data() {
-            if file.is_video() {
+            if file.file_type==FileTypes::Video {
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
                 file_url.push_str(&name);
@@ -194,6 +206,7 @@ impl VideoDB {
         }
         return vec_out;
     }
+    #[allow(unused)]
     pub fn get_vid_html(
         &self,
         path_base: String,
@@ -357,7 +370,7 @@ impl VideoDB {
     pub fn get_thumb_res(&self) -> Result<u32, String> {
         return Ok(self.thumb_res);
     }
-    pub fn refresh(&mut self){
+    pub fn refresh(&mut self)->Result<(),String>{
         let source = self.source_dir.clone();
         let db_path = self.database_path.clone();
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
@@ -375,7 +388,10 @@ impl VideoDB {
                 if join_res.is_ok() {
                     let join = join_res.ok().unwrap();
                     self.database = join;
-                    self.database.make_backed(&db_path.unwrap());
+                    let res = self.database.make_backed(&db_path.unwrap());
+                    if res.is_err(){
+                        return Err("Failed to write database to disk".to_string());
+                    }
                 } 
             }
         }
@@ -385,6 +401,7 @@ impl VideoDB {
                 vid_name_vec.push(vid.path);
             }
         }
+    return Ok(());
     }
 }
 /*
@@ -471,14 +488,16 @@ fn db_from_dir(
                     extension = file_ext_res.unwrap().to_str().unwrap().to_string();
                 }
 
-                let vid = FileData {
+                let mut vid = FileData {
                     file_name: file_name.clone(),
                     file_path: file_path.clone(),
+                    file_type:FileTypes::Unknown,
                     extension: extension,
                     name: file_name,
                     metadata: new_metadata(),
                 };
-                db.add_video(file_path, vid);
+                vid.gen_file_type();
+                db.add_video(file_path, vid)?;
             }
         }
 
@@ -494,18 +513,18 @@ pub fn from_legacy(
     _database_path: String,
     _thumb_res: u32,
 ) -> Result<VideoDB, String> {
-    let mut db_res = new(read_dir, _thumb_dir, _database_path, _thumb_res);
+    let db_res = new(read_dir, _thumb_dir, _database_path, _thumb_res);
     if db_res.is_ok() {
         let mut db = db_res.ok().unwrap();
         for vid in legacy_db.iter() {
-            let res = db.add_video(vid.file_name.clone(), FileData::from(vid.clone()));
+            db.add_video(vid.file_name.clone(), FileData::from(vid.clone()))?;
         }
         let playlists = legacy_db.get_playlist_all();
         for play in playlists {
-            db.add_playlist(play.name, play.video_paths);
+            db.add_playlist(play.name, play.video_paths)?;
         }
 
-        db.refresh();
+        db.refresh()?;
         return Ok(db);
     } else {
         return Err("failed to create database".to_string());

@@ -1,0 +1,1 @@
+{"version":1,"data":{"users":[{"username":"root","passwd":"$argon2i$v=19$m=4096,t=3,p=1$wRPQ4azSxWPtdS+q8y1Tnlk2RoE$LG8kAsMAdw7D0NioD84m8bGtkbgKGvy1yTpKN2HfOfQ"}],"videos":{"video_path":"/home/nick/Videos","thumbnails":"thumbnails","playlists":[]},"thumb_res":400}}

@@ -1,0 +1,27 @@
+{
+  "files": {
+    "main.css": "/hermit/static/css/main.d1b05096.chunk.css",
+    "main.js": "/hermit/static/js/main.720bd9a4.chunk.js",
+    "main.js.map": "/hermit/static/js/main.720bd9a4.chunk.js.map",
+    "runtime-main.js": "/hermit/static/js/runtime-main.a42c3e5e.js",
+    "runtime-main.js.map": "/hermit/static/js/runtime-main.a42c3e5e.js.map",
+    "static/css/2.47783845.chunk.css": "/hermit/static/css/2.47783845.chunk.css",
+    "static/js/2.ad45ee21.chunk.js": "/hermit/static/js/2.ad45ee21.chunk.js",
+    "static/js/2.ad45ee21.chunk.js.map": "/hermit/static/js/2.ad45ee21.chunk.js.map",
+    "index.html": "/hermit/index.html",
+    "precache-manifest.d134769aa4fb9d6c922d52427d6aa3ee.js": "/hermit/precache-manifest.d134769aa4fb9d6c922d52427d6aa3ee.js",
+    "service-worker.js": "/hermit/service-worker.js",
+    "static/css/2.47783845.chunk.css.map": "/hermit/static/css/2.47783845.chunk.css.map",
+    "static/css/main.d1b05096.chunk.css.map": "/hermit/static/css/main.d1b05096.chunk.css.map",
+    "static/js/2.ad45ee21.chunk.js.LICENSE": "/hermit/static/js/2.ad45ee21.chunk.js.LICENSE",
+    "static/media/semantic.min.css": "/hermit/static/media/outline-icons.ef60a4f6.woff",
+    "static/media/logo.svg": "/hermit/static/media/logo.31519c00.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.a42c3e5e.js",
+    "static/css/2.47783845.chunk.css",
+    "static/js/2.ad45ee21.chunk.js",
+    "static/css/main.d1b05096.chunk.css",
+    "static/js/main.720bd9a4.chunk.js"
+  ]
+}
