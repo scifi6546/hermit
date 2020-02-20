@@ -361,6 +361,7 @@ impl VideoDB {
         let source = self.source_dir.clone();
         let db_path = self.database_path.clone();
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
+
         if source.is_some() && db_path.is_some() {
             let db_res = db_from_dir(
                 source.unwrap(),
@@ -377,18 +378,24 @@ impl VideoDB {
                     self.database = join;
                     let res = self.database.make_backed(&db_path.unwrap());
                     if res.is_err(){
+                        error!("Failed to write database to disk");
                         return Err("Failed to write database to disk".to_string());
                     }
                 } 
+            }else{
+                error!("failed to make database from directory: {}",db_res.clone().err().unwrap());
+                return Err(db_res.err().unwrap());
+
             }
-        }
+        }    
         for play in play_before_join{
             let mut vid_name_vec = vec![];
             for vid in play.videos{
                 vid_name_vec.push(vid.path);
             }
         }
-    return Ok(());
+        info!("successfully reloaded database from disk");
+        return Ok(());
     }
 }
 /*
@@ -416,8 +423,11 @@ pub fn new(
     database_path: String,
     thumb_res: u32,
 ) -> Result<VideoDB, String> {
+    info!("creating backed datastructure");
     let make_db_res = gulkana::backed_datastructure(&database_path);
+    
     if make_db_res.is_ok() {
+        info!("made backed datastructure at path: {}",database_path);
         let make_db = make_db_res.ok().unwrap();
         assert!(Path::new(&database_path).exists());
         
@@ -464,11 +474,14 @@ fn db_from_dir(
     _database_path: String,
     _thumb_res: u32,
 ) -> Result<VideoDB, String> {
+    info!("making database from directory");
     let dir_iter_res = Path::new(&read_dir).read_dir();
     if dir_iter_res.is_ok() {
         let mut db = empty();
         for file in dir_iter_res.unwrap() {
+            info!("iterating through file");
             if file.is_ok() {
+                info!("adding file");
                 let file_final = file.unwrap();
                 let final_path = file_final.path();
                 let file_name = file_final.file_name().into_string().unwrap();
@@ -489,11 +502,14 @@ fn db_from_dir(
                 };
                 vid.gen_file_type();
                 db.add_video(file_path, vid)?;
+            }else{
+                error!("file in directory invalid");
             }
         }
 
         return Ok(db);
     } else {
+        error!("path: {} not directory",read_dir);
         return Err("path not directory".to_string());
     }
 }

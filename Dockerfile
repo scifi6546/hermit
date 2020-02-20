@@ -22,4 +22,5 @@ WORKDIR /home/app_user
 RUN mkdir thumbnails
 RUN ls -alh
 ENV SSL=""
+ENV RUST_LOG=info
 CMD hermit-rust $SSL
