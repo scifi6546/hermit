@@ -1,6 +1,8 @@
 mod videos;
 mod config;
 use actix_web::{middleware::Logger, web,App,HttpResponse,HttpRequest,HttpServer,Responder,Result};
+
+use log::Level;
 use std::path::PathBuf;
 use std::path::Path;
 use std::process::Command;
@@ -85,20 +87,6 @@ impl State{
 		    return Err("not authorized".to_string());
         }
     }
-	pub fn get_vid_html(&self,user_token:String,video_name:String)->Result<videos::VideoHtml,String>{
-		if self.users.verify_token(user_token){
-                    let res = self.video_db.get_vid_html(VIDEO_WEB_PATH.to_string(),
-                        THUMB_WEB_PATH.to_string(),video_name);
-                    if res.is_ok(){
-                        return Ok(res.ok().unwrap());
-                    }
-                    else{
-                        return Err(res.err().unwrap());
-                    }
-		}else{
-			return Err("not authorized".to_string())
-		}
-	}
         pub fn get_vid_html_from_path(&self, user_token:String,video_path:String)->Result<videos::VideoHtml,String>{
             if self.is_auth(user_token){
 
@@ -139,9 +127,6 @@ impl State{
                 return Err("not authorized".to_string());
             }
         }
-	pub fn get_vid_dir(&self)->String{
-		return self.config_file.videos.video_path.clone();
-	}
         pub fn get_thumb_dir(&self)->String{
             return self.config_file.videos.thumbnails.clone();
         }
@@ -181,21 +166,12 @@ impl State{
             if self.is_setup(){
                 return Err("already setup".to_string());
             }
-            let reload_res = self.reload_server(video_dir,thumb_res);
-            let add_user_res = self._add_user(username,password);
-
-            if reload_res.is_ok() && add_user_res.is_ok(){
-                self.setup_bool=true;
-                return Ok("Sucess".to_string());
-            }else{
-                if reload_res.is_err(){
-                    return Err(reload_res.err().unwrap());
-                }
-                else{
-                    return Err(add_user_res.err().unwrap());
-                }
-            }
-
+            self.reload_server(video_dir,thumb_res)?;
+            info!("server reloaded successfully");
+            self._add_user(username,password)?;
+            info!("Added User sucessfully");
+            self.setup_bool=true;
+            return Ok("sucess".to_string());
         }
         pub fn reload_server(&mut self,video_dir:String,thumb_res:u32
                      )->Result<String,String>{
@@ -207,14 +183,16 @@ impl State{
             if video_res.is_ok(){
                 self.video_db=video_res.ok().unwrap()
             }else{
+                error!("{}",video_res.clone().err().unwrap());
                 return Err(video_res.err().unwrap());
             }
+            info!("reloaded server successfully");
             return Ok("done".to_string());
         }
         pub fn get_users(&self,token:String)->Result<Vec<UserOut>,String>{
             if self.is_auth(token){
                 let mut out:Vec<UserOut> = Vec::new();
-                for (username,mut user) in self.users.iter(){
+                for (_username,user) in self.users.iter(){
                     out.push(UserOut{username:user.name.clone()});
                 }
                 return Ok(out);
@@ -295,11 +273,10 @@ fn empty_state(startup_otions:StartupOptions)->State{
 }
 fn make_ssl_key(){
     if !Path::new("key.pem").exists() || !Path::new("cert.pem").exists(){
-        println!("making ssl certificate");
         let _res = Command::new("openssl").arg("req").arg("-x509").arg("-newkey").arg("rsa:4096")
             .arg("-nodes").arg("-keyout").arg("key.pem").arg("-out").arg("cert.pem")
             .arg("-days").arg("365").arg("-subj").arg("/CN=localhost").output();
-        println!("done making ssl certificate");
+        info!("made ssl cert");
     }
 }
 pub fn run_webserver(state_in:&mut State,use_ssl:bool){
@@ -309,12 +286,11 @@ pub fn run_webserver(state_in:&mut State,use_ssl:bool){
     // load ssl keys
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
-	env_logger::init();
     let http_server = HttpServer::new(move || {
         App::new().wrap(
             CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
                     .secure(false)
-            ).wrap( Logger::default())
+            )
 			.register_data(shared_state.clone())
             .route("/api/login",web::post().to(login))
 	    .route("/api/videos",web::get().to(get_videos))
@@ -514,7 +490,7 @@ struct Index{
 }
 //todo redirect to https. I need to figure out how to do that
 //Current Ideas: detect if user is on http, if on http redirect to https
-pub fn index(req: HttpRequest)-> Result<NamedFile>{
+pub fn index(_req: HttpRequest)-> Result<NamedFile>{
     let path: PathBuf = PathBuf::from("static/index.html");
     Ok(NamedFile::open(path)?)
         
@@ -523,7 +499,7 @@ pub fn index(req: HttpRequest)-> Result<NamedFile>{
 struct IsSetupStruct{
     is_setup:String,
 }
-pub fn api_is_setup(data:web::Data<RwLock<State>>,session:Session)->impl Responder{
+pub fn api_is_setup(data:web::Data<RwLock<State>>,_session:Session)->impl Responder{
     let state_data = data.read().unwrap();
     if state_data.is_setup(){
         let setup = IsSetupStruct{is_setup:"true".to_string()};

@@ -79,7 +79,9 @@ pub fn load_config()->Result<Config,String>{
             }
         }
         print_config(config_out.clone().data);
-        return Ok(config_out.data)
+        info!("loaded config file successfully");
+
+        return Ok(config_out.data);
     }
     return Err(result.err().unwrap());
 }
@@ -91,6 +93,6 @@ pub fn write_conf(input: Config)->std::io::Result<()>{
     let mut file = File::create("config.json")?;
     
     let write_string = serde_json::to_string(&ConfigFile{version:CONFIG_VERSION,data:input}).unwrap();
-    println!("write_string: {}",write_string);
+    debug!("writing config string: {}",write_string);
     return file.write_all(&write_string.into_bytes());
 }

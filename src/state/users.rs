@@ -8,6 +8,7 @@ pub struct User{
     pub token: String 
 }
 type Username=String;
+#[allow(dead_code)]
 #[derive(Clone,Serialize)]
 pub enum UserCategories{
     Admin,

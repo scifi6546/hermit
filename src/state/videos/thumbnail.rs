@@ -17,8 +17,12 @@ pub fn make_thumb(video_path:String,thumb_dir:String,resolution:u32)->Result<Thu
     if !vid_dir_path.is_file(){
         return Err(format!("thumbnail.rs: vid_dir {} is not a file",vid_dir_path.display()));
     }
-    if(!thumb_dir_path.exists()){
-        fs::create_dir(thumb_dir_path.to_str().unwrap());
+    if !thumb_dir_path.exists(){
+        let err = fs::create_dir(thumb_dir_path.to_str().unwrap());
+        if err.is_err(){
+            return Err("failed to create thumbnail directory".to_string());
+
+        }
 
     }
     if !thumb_dir_path.is_dir(){

@@ -155,7 +155,11 @@ impl VideoDB {
                             thumbnail_res: thumb.resolution,
                             video_data: file.metadata.video_data.clone(),
                         };
-                        self.database.set_data(&key, &file);
+                        let res = self.database.set_data(&key, &file);
+                        if res.is_err(){
+                            return Err("failed to set data".to_string());
+
+                        }
                     } else {
                         return Err(thumb_res.err().unwrap());
                     }
@@ -164,7 +168,9 @@ impl VideoDB {
         }
         return Ok("sucessfully made thumbnails".to_string());
     }
-    pub fn add_video(&mut self, file_name: String, video_data: FileData) -> Result<String, String> {
+    pub fn add_video(&mut self, file_name: String,mut video_data: FileData) -> Result<String, String> {
+        video_data.gen_file_type();
+
         let res = self.database.set_data(&file_name, &video_data);
         if res.is_ok() {
             return Ok("".to_string());
@@ -179,6 +185,7 @@ impl VideoDB {
         thumbnail_base: String,
     ) -> Vec<VideoHtml> {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
+        debug!("database size when getting data: {}",self.database.len());
         for (_key, file) in self.database.iter_data() {
             if file.file_type==FileTypes::Video {
                 let name = file.name.clone();
@@ -237,23 +244,6 @@ impl VideoDB {
             }
         }
         return Err("video not found".to_string());
-    }
-    pub fn get_vid_data(&self, vid_path: String) -> Result<VideoData, String> {
-        let res = self.database.get(&vid_path.clone());
-        if res.is_ok() {
-            let vid = res.ok().unwrap();
-            let out = VideoData {
-                star_rating: vid.metadata.video_data.star_rating,
-                rating: vid.metadata.video_data.rating.clone(),
-                description: vid.metadata.video_data.description.clone(),
-            };
-            return Ok(out);
-        } else {
-            return Err(format!(
-                "videos.rs get_vid_data: path {} not found",
-                vid_path
-            ));
-        }
     }
     pub fn get_vid_html_from_path(
         &self,
@@ -364,9 +354,6 @@ impl VideoDB {
         }
         return Err("video not found".to_string());
     }
-    pub fn iter(&self) -> gulkana::DataNodeIter<'_, std::string::String, FileData, DirectoryTypes> {
-        return self.database.iter_data();
-    }
     pub fn get_thumb_res(&self) -> Result<u32, String> {
         return Ok(self.thumb_res);
     }
@@ -443,7 +430,7 @@ pub fn new(
             thumb_res: thumb_res,
             source_dir: Some(read_dir),
         };
-        video_db.refresh();
+        video_db.refresh()?;
         let thumb_res = video_db.make_thumbnails();
         if thumb_res.is_ok() {
             return Ok(video_db);
@@ -454,7 +441,11 @@ pub fn new(
         let parse_res = legacy_db::from_path(database_path.clone());
         
         if parse_res.is_ok() {
-            fs::remove_file(database_path.clone());
+            let res = fs::remove_file(database_path.clone());
+            if res.is_err(){
+                return Err("failed to remove legacy db".to_string());
+
+            }
             return from_legacy(
                 parse_res.ok().unwrap(),
                 read_dir,

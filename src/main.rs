@@ -1,6 +1,9 @@
 use std::env;
+#[macro_use] extern crate log;
+use log::Level;
 mod state;
 fn main(){
+    env_logger::init();
     let mut ssl=true;
     let mut previous:String="".to_string();
     for arg in env::args(){
@@ -14,8 +17,5 @@ fn main(){
         }
         previous=arg.to_string()
     }
-    //config::load_config();
-    //videos::get_videos("videos".to_string());
-    //webserver::setup_webserver();
     state::init(ssl);
 }
