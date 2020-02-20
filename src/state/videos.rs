@@ -361,6 +361,7 @@ impl VideoDB {
         let source = self.source_dir.clone();
         let db_path = self.database_path.clone();
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
+        info!("checking database against file system");
 
         if source.is_some() && db_path.is_some() {
             let db_res = db_from_dir(
@@ -441,7 +442,10 @@ pub fn new(
             source_dir: Some(read_dir),
         };
         video_db.refresh()?;
+
+        info!("starting to make thumbnails");
         let thumb_res = video_db.make_thumbnails();
+        info!("finished making thumbnails");
         if thumb_res.is_ok() {
             return Ok(video_db);
         } else {
@@ -464,7 +468,8 @@ pub fn new(
                 thumb_res,
             );
         } else {
-            return Err("todo".to_string());
+            error!("database corrupted");
+            return Err("Database Corrupted".to_string());
         }
     }
 }
@@ -474,14 +479,12 @@ fn db_from_dir(
     _database_path: String,
     _thumb_res: u32,
 ) -> Result<VideoDB, String> {
-    info!("making database from directory");
+    info!("making database from directory: {}",read_dir);
     let dir_iter_res = Path::new(&read_dir).read_dir();
     if dir_iter_res.is_ok() {
         let mut db = empty();
         for file in dir_iter_res.unwrap() {
-            info!("iterating through file");
             if file.is_ok() {
-                info!("adding file");
                 let file_final = file.unwrap();
                 let final_path = file_final.path();
                 let file_name = file_final.file_name().into_string().unwrap();
