@@ -452,25 +452,21 @@ pub fn new(
             return Err(thumb_res.err().unwrap());
         }
     } else {
-        let parse_res = legacy_db::from_path(database_path.clone());
-        
-        if parse_res.is_ok() {
-            let res = fs::remove_file(database_path.clone());
-            if res.is_err(){
-                return Err("failed to remove legacy db".to_string());
-
-            }
-            return from_legacy(
-                parse_res.ok().unwrap(),
-                read_dir,
-                thumb_dir,
-                database_path,
-                thumb_res,
-            );
-        } else {
-            error!("database corrupted");
-            return Err("Database Corrupted".to_string());
+        let err_str:String = make_db_res.err().unwrap().into();
+        error!("{}",err_str);
+        info!("Trying to build legacy db");
+        let parse_res = legacy_db::from_path(database_path.clone())?;
+        let res = fs::remove_file(database_path.clone());
+        if res.is_err(){
+            return Err("failed to remove legacy db".to_string());
         }
+        return from_legacy(
+            parse_res,
+            read_dir,
+            thumb_dir,
+            database_path,
+            thumb_res,
+        );
     }
 }
 fn db_from_dir(
