@@ -452,6 +452,7 @@ pub fn new(
             return Err(thumb_res.err().unwrap());
         }
     } else {
+        error!("failed to make backed datastructure: {}",make_db_res.err().unwrap());
         let parse_res = legacy_db::from_path(database_path.clone());
         
         if parse_res.is_ok() {
@@ -468,8 +469,9 @@ pub fn new(
                 thumb_res,
             );
         } else {
-            error!("database corrupted");
-            return Err("Database Corrupted".to_string());
+            let parse_res_str = parse_res.err().unwrap();
+            error!("Legacy Database Corrupted: {}",parse_res_str);
+            return Err(format!("Legacy Database Corrupted: {}",parse_res_str));
         }
     }
 }
