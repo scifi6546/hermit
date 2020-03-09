@@ -8,6 +8,7 @@ mod thumbnail;
 pub enum FileTypes{
     Video,
     GbaRom,
+    GBRom,
     Unknown,
 
 }
@@ -49,21 +50,23 @@ pub struct FileData {
 }
 impl FileData {
     pub fn gen_file_type(&mut self)->FileTypes{
-        if self.extension == "m4v".to_string()
-            || self.extension == "ogg".to_string()
-            || self.extension == "mp4".to_string()
-        {
-            self.file_type=FileTypes::Video;
-            return FileTypes::Video;
-        } else if self.extension==".gba".to_string() {
-            self.file_type=FileTypes::GbaRom;
-            return FileTypes::GbaRom;
-        }else{
-            self.file_type=FileTypes::Unknown;
-            return FileTypes::Unknown;
+        self.file_type=match self.extension.as_str(){
+            "m4v"=>FileTypes::Video,
+            "ogg"=>FileTypes::Video,
+            "mp4"=>FileTypes::Video,
+            "gba"=>FileTypes::GbaRom,
+            "gb"=>FileTypes::GBRom,
+            _=>FileTypes::Unknown,
+        };
+        return self.file_type.clone();
+    }
+    pub fn can_show_file(&self)->bool{
+        info!("file_type: {:?} extension: {}",self.file_type,self.extension);
+        match self.file_type{
+            FileTypes::Video=>true,
+            FileTypes::GBRom=>true,
+            _=>false,
         }
-
-
     }
 }
 impl From<legacy_db::FileData> for FileData {
@@ -187,7 +190,7 @@ impl VideoDB {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
         debug!("database size when getting data: {}",self.database.len());
         for (_key, file) in self.database.iter_data() {
-            if file.file_type==FileTypes::Video {
+            if file.can_show_file() {
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
                 file_url.push_str(&name);
@@ -452,21 +455,25 @@ pub fn new(
             return Err(thumb_res.err().unwrap());
         }
     } else {
-        let err_str:String = make_db_res.err().unwrap().into();
-        error!("{}",err_str);
-        info!("Trying to build legacy db");
-        let parse_res = legacy_db::from_path(database_path.clone())?;
-        let res = fs::remove_file(database_path.clone());
-        if res.is_err(){
-            return Err("failed to remove legacy db".to_string());
+        let parse_res = legacy_db::from_path(database_path.clone());
+        
+        if parse_res.is_ok() {
+            let res = fs::remove_file(database_path.clone());
+            if res.is_err(){
+                return Err("failed to remove legacy db".to_string());
+
+            }
+            return from_legacy(
+                parse_res.ok().unwrap(),
+                read_dir,
+                thumb_dir,
+                database_path,
+                thumb_res,
+            );
+        } else {
+            error!("database corrupted");
+            return Err("Database Corrupted".to_string());
         }
-        return from_legacy(
-            parse_res,
-            read_dir,
-            thumb_dir,
-            database_path,
-            thumb_res,
-        );
     }
 }
 fn db_from_dir(
