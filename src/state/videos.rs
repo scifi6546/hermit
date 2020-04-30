@@ -585,4 +585,11 @@ pub fn empty() -> VideoDB {
     };
 }
 #[cfg(test)]
-mod test {}
+mod test {
+    use std::fs::File;
+    use super::*;
+    #[test]
+    fn build_database_empty(){
+        let db = empty();
+    }
+}
