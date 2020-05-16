@@ -1,0 +1,29 @@
+pub enum SerializeError {
+    Unknown,
+}
+#[derive(Clone)]
+pub enum DBOperationError {
+    KeyAllreadyPresent,
+    KeyNotFound,
+    NodeNotLink,
+    NodeNotData,
+    SerializeError,
+    FSError,
+    ParseError,
+    FileNotFound,
+    FilePermissionDenied,
+    NetworkConnectionRefused,
+    NetworkConnectionReset,
+    NetworkNotConnected,
+    NetworkAddressInUse,
+    NetworkAddrNotAvailable,
+    BrokenPipe,
+    FileAlreadyExists,
+    WouldBlock,
+    InvalidInput,
+    InvalidData,
+    TimedOut,
+    Interrupted,
+    Other,
+    UnexpectedEof,
+}

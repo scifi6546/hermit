@@ -1,0 +1,14 @@
+[package]
+name = "gulkana"
+version = "1.3.3"
+authors = ["nick <scifi6546@protonmail.com>"]
+edition = "2018"
+description="A simple database"
+license="GPL-3.0-or-later"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand="0.7"
+serde_json="^1.0.44"
+serde = { version = "1.0", features = ["derive"] }

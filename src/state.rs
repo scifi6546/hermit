@@ -180,6 +180,7 @@ impl State {
             self.config_file.videos.thumbnails.clone(),
             DB_PATH.to_string(),
             thumb_res,
+            0,
         );
         if video_res.is_ok() {
             self.video_db = video_res.ok().unwrap();
@@ -225,6 +226,7 @@ impl State {
             "thumbnails".to_string(),
             DB_PATH.to_string(),
             thumb_res,
+            0,
         );
         if video_res.is_ok() {
             self.video_db = video_res.ok().unwrap()
@@ -290,6 +292,7 @@ fn init_state(startup_otions: StartupOptions) -> Result<State, String> {
             "thumbnails".to_string(),
             DB_PATH.to_string(),
             cfg.thumb_res,
+            0,
         );
         if video_res.is_ok() {
             let mut out = State {

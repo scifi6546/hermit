@@ -17,7 +17,6 @@ EXPOSE 8443
 RUN useradd -ms /bin/bash app_user
 
 RUN cp -r /usr/src/hermit/static /home/app_user/static
-USER app_user
 WORKDIR /home/app_user
 RUN mkdir thumbnails
 RUN ls -alh

@@ -8,6 +8,7 @@ mod thumbnail;
 pub enum FileTypes {
     Video,
     GbaRom,
+    GBRom,
     Unknown,
 }
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -48,18 +49,25 @@ pub struct FileData {
 }
 impl FileData {
     pub fn gen_file_type(&mut self) -> FileTypes {
-        if self.extension == "m4v".to_string()
-            || self.extension == "ogg".to_string()
-            || self.extension == "mp4".to_string()
-        {
-            self.file_type = FileTypes::Video;
-            return FileTypes::Video;
-        } else if self.extension == ".gba".to_string() {
-            self.file_type = FileTypes::GbaRom;
-            return FileTypes::GbaRom;
-        } else {
-            self.file_type = FileTypes::Unknown;
-            return FileTypes::Unknown;
+        self.file_type = match self.extension.as_str() {
+            "m4v" => FileTypes::Video,
+            "ogg" => FileTypes::Video,
+            "mp4" => FileTypes::Video,
+            "gba" => FileTypes::GbaRom,
+            "gb" => FileTypes::GBRom,
+            _ => FileTypes::Unknown,
+        };
+        return self.file_type.clone();
+    }
+    pub fn can_show_file(&self) -> bool {
+        info!(
+            "file_type: {:?} extension: {}",
+            self.file_type, self.extension
+        );
+        match self.file_type {
+            FileTypes::Video => true,
+            FileTypes::GBRom => true,
+            _ => false,
         }
     }
 }
@@ -184,7 +192,7 @@ impl VideoDB {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
         debug!("database size when getting data: {}", self.database.len());
         for (_key, file) in self.database.iter_data() {
-            if file.file_type == FileTypes::Video {
+            if file.can_show_file() {
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
                 file_url.push_str(&name);
@@ -381,6 +389,7 @@ pub fn new(
     thumb_dir: String,
     database_path: String,
     thumb_res: u32,
+    num_recurse: u32,
 ) -> Result<VideoDB, String> {
     info!("creating backed datastructure");
     let make_db_res = gulkana::backed_datastructure(&database_path);
@@ -428,8 +437,23 @@ pub fn new(
             );
         } else {
             let parse_res_str = parse_res.err().unwrap();
-            error!("Legacy Database Corrupted: {}", parse_res_str);
-            return Err(format!("Legacy Database Corrupted: {}", parse_res_str));
+            error!(
+                "Legacy Database Corrupted: {} Trying to delete database and rebuild",
+                parse_res_str
+            );
+
+            let res = std::fs::remove_file(database_path.clone());
+            if num_recurse < 2 && res.is_ok() {
+                return new(
+                    read_dir,
+                    thumb_dir,
+                    database_path,
+                    thumb_res,
+                    num_recurse + 1,
+                );
+            } else {
+                return Err(format!("Legacy Database Corrupted: {} ", parse_res_str));
+            }
         }
     }
 }
@@ -483,7 +507,7 @@ pub fn from_legacy(
     _database_path: String,
     _thumb_res: u32,
 ) -> Result<VideoDB, String> {
-    let db_res = new(read_dir, _thumb_dir, _database_path, _thumb_res);
+    let db_res = new(read_dir, _thumb_dir, _database_path, _thumb_res, 0);
     if db_res.is_ok() {
         let mut db = db_res.ok().unwrap();
         for vid in legacy_db.iter() {
@@ -510,4 +534,11 @@ pub fn empty() -> VideoDB {
     };
 }
 #[cfg(test)]
-mod test {}
+mod test {
+    use std::fs::File;
+    use super::*;
+    #[test]
+    fn build_database_empty(){
+        let db = empty();
+    }
+}
