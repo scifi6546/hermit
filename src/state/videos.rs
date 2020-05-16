@@ -210,38 +210,6 @@ impl VideoDB {
         }
         return vec_out;
     }
-    #[allow(unused)]
-    pub fn get_vid_html(
-        &self,
-        path_base: String,
-        thumbnail_base: String,
-        vid_name: String,
-    ) -> Result<VideoHtml, String> {
-        for (_key, file) in self.database.iter_data() {
-            if file.name == vid_name {
-                let name = file.name.clone();
-                let mut url = path_base;
-                url.push_str(&name);
-
-                let video_data = VideoData {
-                    rating: file.metadata.video_data.rating.clone(),
-                    star_rating: file.metadata.video_data.star_rating,
-                    description: file.metadata.video_data.description.clone(),
-                };
-                let mut thumbnail_name = thumbnail_base.clone();
-                thumbnail_name.push_str(&file.metadata.thumbnail_name.clone());
-                return Ok(VideoHtml {
-                    name: file.name.clone(),
-                    url: url.clone(),
-                    thumbnail_url: thumbnail_name,
-                    html_url: url,
-                    path: file.file_path.clone(),
-                    video_data: video_data,
-                });
-            }
-        }
-        return Err("video not found".to_string());
-    }
     pub fn get_vid_html_from_path(
         &self,
         path_base: String,
@@ -408,25 +376,6 @@ impl VideoDB {
         return Ok(());
     }
 }
-/*
-fn is_video(path_str: String)->bool{
-    let path = Path::new(&path_str);
-    let ext_opt = path.extension();
-    let mut extension = "".to_string();
-    if ext_opt.is_some(){
-        let foo = ext_opt.unwrap();
-        extension=foo.to_str().unwrap().to_string();
-    }
-    if path.is_file() && (extension=="m4v".to_string() || extension=="ogg".to_string() || extension=="mp4".to_string()){
-        return true;
-    }else{
-        return false;
-    }
-}*/
-/*Todo read from string
- *
- *
- */
 pub fn new(
     read_dir: String,
     thumb_dir: String,
