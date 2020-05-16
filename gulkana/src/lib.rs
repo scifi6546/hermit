@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::*;
-
+mod service;
 use std::fmt;
 //rust lint does not see that rand is used so to kill error
 #[allow(unused_imports)]
