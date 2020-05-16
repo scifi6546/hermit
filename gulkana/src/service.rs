@@ -39,9 +39,15 @@ struct CommandResult<Key,DataType,LinkType>{
     data:Option<DataType>,
     link:Option<LinkType>
 }
+///Holds Database and Access to Services
 struct ServiceController<Key:std::clone::Clone+std::cmp::Ord+Serialize,DataType:std::clone::Clone+std::cmp::Ord+Serialize,LinkType:std::clone::Clone+std::cmp::Ord+Serialize>{
     db:DataStructure<Key,DataType,LinkType>,
     service:Vec<ServiceDB<Key,DataType,LinkType>>,
+}
+impl<Key:std::clone::Clone+std::cmp::Ord+Serialize,DataType:std::clone::Clone+std::cmp::Ord+Serialize,LinkType:std::clone::Clone+std::cmp::Ord+Serialize> ServiceController<Key,DataType,LinkType>{
+    //pub fn backed()->ServiceController<Key,DataType,LinkType>{
+    //    
+    //}
 }
 
 pub fn new_client<Key,DataType,LinkType>()->(ServiceDB<Key,DataType,LinkType>,ServiceClient<Key,DataType,LinkType>){

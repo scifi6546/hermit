@@ -546,12 +546,11 @@ where
     return Ok(ds);
 }
 pub fn backed_datastructure<
-    'a,
     K: std::cmp::PartialEq + std::clone::Clone + std::cmp::Ord + Serialize,
     DataType: std::clone::Clone + Serialize,
     LinkLabel: std::clone::Clone + Serialize,
 >(
-    backing: &'a String,
+    backing: &String,
 ) -> Result<DataStructure<K, DataType, LinkLabel>, DBOperationError>
 where
     K: DeserializeOwned,
