@@ -28,6 +28,7 @@ impl<
             return Err(DBOperationError::NodeNotData);
         }
     }
+    #[allow(unused)]
     pub fn get_item_mut(&mut self) -> Result<&mut DataType, DBOperationError> {
         let data = self.item.b_mut();
         if data.is_some() {

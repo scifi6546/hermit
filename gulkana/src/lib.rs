@@ -9,7 +9,6 @@ use rand::prelude;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 mod opt_pair;
-use opt_pair::{new_optstruct_a, new_optstruct_b, OptStruct};
 mod errors;
 use errors::*;
 mod node;
@@ -859,7 +858,7 @@ mod tests {
     }
     #[test]
     fn test_to_string_error() {
-        let s: String = DBOperationError::KeyAllreadyPresent.into();
+        let _s: String = DBOperationError::KeyAllreadyPresent.into();
     }
     #[test]
     fn print_errors() {
