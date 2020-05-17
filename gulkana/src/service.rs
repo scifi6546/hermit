@@ -260,10 +260,10 @@ pub struct ServiceController<
     service: Vec<ServiceDB<Key, DataType, LinkType>>,
 }
 impl<
-        Key: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned + std::marker::Sync,
-        DataType: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned + std::marker::Sync,
-        LinkType: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned + std::marker::Sync,
-    > ServiceController<Key, DataType, LinkType>
+Key: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+std::cmp::Ord+DeserializeOwned,
+DataType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+DeserializeOwned,
+LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+DeserializeOwned,
+>  ServiceController<Key, DataType, LinkType>
 {
     pub fn backed(
         path: &String,
