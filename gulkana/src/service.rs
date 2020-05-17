@@ -27,6 +27,9 @@ impl<
             None
         }
     }
+    fn send_command_result(&mut self,res: CommandResult<Key,DataType,LinkType>){
+        self.send_result.send(res);
+    }
 }
 ///Service used on Client Side
 pub struct ServiceClient<
@@ -246,56 +249,60 @@ struct CommandResult<
     DataType: std::marker::Sync + std::marker::Send,
     LinkType: std::marker::Sync + std::marker::Send,
 > {
-    key: Key,
-    data: DataType,
-    link: LinkType,
+    key: Option<Key>,
+    data: Option<DataType>,
+    link: Option<LinkType>,
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
-    Key: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
-    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
-    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    Key: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
+    DataType: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
     db: DataStructure<Key, DataType, LinkType>,
     service: Vec<ServiceDB<Key, DataType, LinkType>>,
 }
 impl<
-        Key: std::marker::Sync
+        Key: 'static+std::marker::Sync
             + std::marker::Send
             + std::clone::Clone
             + Serialize
             + std::cmp::Ord
             + DeserializeOwned,
-        DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
-        LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
+        DataType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
+        LinkType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
     > ServiceController<Key, DataType, LinkType>
 {
     pub fn backed(
-        path: &String,
+        path: String,
     ) -> Result<ServiceClient<Key, DataType, LinkType>, crate::errors::DBOperationError> {
-        Ok(Self::make_controller_thread(&ServiceController {
-            db: backed_datastructure(path)?,
+        let c:fn(String)-> ServiceController<Key, DataType, LinkType>= |path| {ServiceController {
+            db: backed_datastructure(&path).ok().unwrap(),
             service: vec![],
-        }))
+        }};
+        Ok(Self::make_controller_thread(c,path))
     }
     pub fn empty() -> ServiceClient<Key, DataType, LinkType> {
-        Self::make_controller_thread(&ServiceController {
+        Self::make_controller_thread(|()|{ServiceController {
             db: new_datastructure(),
             service: vec![],
-        })
+        }},())
     }
     /// The main thread of the program
     fn main_loop(&mut self) {
         loop {}
     }
-    fn make_controller_thread(
-        s: &ServiceController<Key, DataType, LinkType>,
+    fn make_controller_thread<Args:'static + std::marker::Send>(
+        s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
+        args:Args
     ) -> ServiceClient<Key, DataType, LinkType> {
-        let c = s.add_service();
+        let (send, recieve) = channel();
         std::thread::spawn(move || {
-            s.main_loop();
+            let mut controller = s(args);
+            controller.main_loop();
+            send.send(controller.add_service());
         });
-        return c;
+        return recieve.recv().ok().unwrap();
     }
     pub fn add_service(&mut self) -> ServiceClient<Key, DataType, LinkType> {
         let (db, client) = new_client();
@@ -333,13 +340,22 @@ mod test {
     }
     #[test]
     fn service_send() {
+        use std::{thread, time};
         let (mut db, mut c) = new_client::<u32, u32, u32>();
         let t = std::thread::spawn(move || {
-            c.send_command(Command::GetKeys(0));
+            block_on(c.send_command(Command::GetKeys(0)));
         });
+        db.send_command_result(CommandResult{
+            key:None,
+            data:None,
+            link:None,
+        });
+        thread::sleep(time::Duration::from_millis(10));
+        
         #[allow(unused_must_use)]
         let _r = t.join();
         assert_eq!(db.get_command().unwrap(), Command::GetKeys(0));
+        
     }
     #[test]
     fn insert_and_get() {
