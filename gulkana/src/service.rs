@@ -242,28 +242,33 @@ enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std:
     GetLinkType(LinkType),
 }
 struct CommandResult<
-    Key: std::marker::Sync,
-    DataType: std::marker::Sync,
-    LinkType: std::marker::Sync,
+    Key: std::marker::Sync + std::marker::Send,
+    DataType: std::marker::Sync + std::marker::Send,
+    LinkType: std::marker::Sync + std::marker::Send,
 > {
-    key: Option<Key>,
-    data: Option<DataType>,
-    link: Option<LinkType>,
+    key: Key,
+    data: DataType,
+    link: LinkType,
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
-    Key: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+std::cmp::Ord,
-    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize,
-    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize,
+    Key: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
     db: DataStructure<Key, DataType, LinkType>,
     service: Vec<ServiceDB<Key, DataType, LinkType>>,
 }
 impl<
-Key: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+std::cmp::Ord+DeserializeOwned,
-DataType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+DeserializeOwned,
-LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+DeserializeOwned,
->  ServiceController<Key, DataType, LinkType>
+        Key: std::marker::Sync
+            + std::marker::Send
+            + std::clone::Clone
+            + Serialize
+            + std::cmp::Ord
+            + DeserializeOwned,
+        DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
+        LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
+    > ServiceController<Key, DataType, LinkType>
 {
     pub fn backed(
         path: &String,
@@ -298,8 +303,11 @@ LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+De
         return client;
     }
 }
-fn new_client<Key: std::marker::Sync+std::marker::Send, DataType: std::marker::Sync+std::marker::Send, LinkType: std::marker::Sync+std::marker::Send>(
-) -> (
+fn new_client<
+    Key: std::marker::Sync + std::marker::Send,
+    DataType: std::marker::Sync + std::marker::Send,
+    LinkType: std::marker::Sync + std::marker::Send,
+>() -> (
     ServiceDB<Key, DataType, LinkType>,
     ServiceClient<Key, DataType, LinkType>,
 ) {
