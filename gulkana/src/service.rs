@@ -1,15 +1,24 @@
+use crate::errors;
 use crate::{backed_datastructure, new_datastructure, DataStructure};
+use futures::executor::block_on;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use futures::executor::block_on;
-use crate::errors;
 ///Service for use Database Side
-pub struct ServiceDB<Key:std::marker::Sync, DataType:std::marker::Sync, LinkType:std::marker::Sync> {
+pub struct ServiceDB<
+    Key: std::marker::Sync + std::marker::Send,
+    DataType: std::marker::Sync + std::marker::Send,
+    LinkType: std::marker::Sync + std::marker::Send,
+> {
     send_result: Sender<CommandResult<Key, DataType, LinkType>>,
     recieve_commands: Receiver<Command<Key, DataType, LinkType>>,
 }
-impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Send>  ServiceDB<Key, DataType, LinkType> {
+impl<
+        Key: std::marker::Sync + std::marker::Send,
+        DataType: std::marker::Sync + std::marker::Send,
+        LinkType: std::marker::Sync + std::marker::Send,
+    > ServiceDB<Key, DataType, LinkType>
+{
     fn get_command(&mut self) -> Option<Command<Key, DataType, LinkType>> {
         let c = self.recieve_commands.try_recv();
         if c.is_ok() {
@@ -20,12 +29,24 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     }
 }
 ///Service used on Client Side
-pub struct ServiceClient<Key:std::marker::Sync, DataType:std::marker::Sync, LinkType:std::marker::Sync> {
+pub struct ServiceClient<
+    Key: std::marker::Sync + std::marker::Send,
+    DataType: std::marker::Sync + std::marker::Send,
+    LinkType: std::marker::Sync + std::marker::Send,
+> {
     send_commands: Sender<Command<Key, DataType, LinkType>>,
     recieve_result: Receiver<CommandResult<Key, DataType, LinkType>>,
 }
-impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Send> ServiceClient<Key, DataType, LinkType> {
-    async fn send_command(&mut self, command: Command<Key, DataType, LinkType>) -> CommandResult<Key,DataType,LinkType> {
+impl<
+        Key: std::marker::Sync + std::marker::Send,
+        DataType: std::marker::Sync + std::marker::Send,
+        LinkType: std::marker::Sync + std::marker::Send,
+    > ServiceClient<Key, DataType, LinkType>
+{
+    async fn send_command(
+        &mut self,
+        command: Command<Key, DataType, LinkType>,
+    ) -> CommandResult<Key, DataType, LinkType> {
         self.send_commands.send(command);
         return self.recieve_result.recv().ok().unwrap();
     }
@@ -38,8 +59,12 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     ///     
     /// });
     /// ```
-    pub async fn insert(&mut self, key: Key, data: DataType) -> Result<(), errors::DBOperationError>{
-        self.send_command(Command::Insert(key,data));
+    pub async fn insert(
+        &mut self,
+        key: Key,
+        data: DataType,
+    ) -> Result<(), errors::DBOperationError> {
+        self.send_command(Command::Insert(key, data));
         Ok(())
     }
     ///Used to insert a link into a datastructure
@@ -61,7 +86,7 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     ) -> Result<(), errors::DBOperationError> {
         Ok(())
     }
-        ///Overwrites Links with vec shown
+    ///Overwrites Links with vec shown
     ///```
     /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
     /// ds.insert(&10,5);
@@ -98,12 +123,12 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     pub fn set_data(&mut self, key: &Key, data: &DataType) -> Result<(), errors::DBOperationError> {
         Ok(())
     }
-        /// Used to iterate through data
+    /// Used to iterate through data
     ///
     pub fn iter_data(&self) {
         ()
     }
-        /// Gets All keys in database
+    /// Gets All keys in database
     ///
     /// ```
     ///
@@ -114,7 +139,7 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     pub fn get_keys(&self) -> std::vec::Vec<Key> {
         vec![]
     }
-     /// gets key from database
+    /// gets key from database
     /// ```
     ///
     /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
@@ -141,13 +166,10 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
 
     /// Iterates through nodes attached to link
     ///
-    pub fn iter_links(
-        &self,
-        key: &Key,
-    ) -> Result<(), errors::DBOperationError> {
+    pub fn iter_links(&self, key: &Key) -> Result<(), errors::DBOperationError> {
         Ok(())
     }
-        /// Checks if database contains a given key
+    /// Checks if database contains a given key
     /// ```
     /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
     /// ds.insert(&10,5);
@@ -157,7 +179,7 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     pub fn contains(&self, key: &Key) -> bool {
         false
     }
-        /// Gets iterator of links with labels
+    /// Gets iterator of links with labels
     /// ```
     /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
     /// ds.insert(&10,5);
@@ -166,14 +188,10 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
     ///         assert!(link==9);
     /// }
     /// ```
-    pub fn iter_link_type(
-        &self,
-        link_type: &LinkType,
-    ) ->()
+    pub fn iter_link_type(&self, link_type: &LinkType) -> ()
     where
         LinkType: std::cmp::PartialEq,
     {
-
     }
     pub fn append_links(
         &mut self,
@@ -181,16 +199,15 @@ impl<Key:std::marker::Send, DataType:std::marker::Send, LinkType:std::marker::Se
         key_append: &Key,
     ) -> Result<(), errors::DBOperationError> {
         Err(errors::DBOperationError::NodeNotLink)
-        
     }
     pub fn right_join(
         &self,
         right: &DataStructure<Key, DataType, LinkType>,
-    ) -> Result<DataStructure<Key, DataType, LinkType>, errors::DBOperationError> 
+    ) -> Result<DataStructure<Key, DataType, LinkType>, errors::DBOperationError>
     where
-        Key:std::clone::Clone+std::cmp::Ord+Serialize,
-        DataType:std::clone::Clone+Serialize,
-        LinkType:std::clone::Clone+Serialize,
+        Key: std::clone::Clone + std::cmp::Ord + Serialize,
+        DataType: std::clone::Clone + Serialize,
+        LinkType: std::clone::Clone + Serialize,
     {
         Err(errors::DBOperationError::NodeNotLink)
     }
@@ -224,24 +241,28 @@ enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std:
     Insert(Key, DataType),
     GetLinkType(LinkType),
 }
-struct CommandResult<Key:std::marker::Sync, DataType:std::marker::Sync, LinkType:std::marker::Sync> {
+struct CommandResult<
+    Key: std::marker::Sync,
+    DataType: std::marker::Sync,
+    LinkType: std::marker::Sync,
+> {
     key: Option<Key>,
     data: Option<DataType>,
     link: Option<LinkType>,
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
-    Key:      std::clone::Clone + std::cmp::Ord + Serialize + std::marker::Sync,
-    DataType: std::clone::Clone + std::cmp::Ord + Serialize + std::marker::Sync,
-    LinkType: std::clone::Clone + std::cmp::Ord + Serialize + std::marker::Sync,
+    Key: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+std::cmp::Ord,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize,
 > {
     db: DataStructure<Key, DataType, LinkType>,
     service: Vec<ServiceDB<Key, DataType, LinkType>>,
 }
 impl<
-        Key:      std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned+std::marker::Sync,
-        DataType: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned+std::marker::Sync,
-        LinkType: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned+std::marker::Sync,
+        Key: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned + std::marker::Sync,
+        DataType: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned + std::marker::Sync,
+        LinkType: std::clone::Clone + std::cmp::Ord + Serialize + DeserializeOwned + std::marker::Sync,
     > ServiceController<Key, DataType, LinkType>
 {
     pub fn backed(
@@ -259,12 +280,12 @@ impl<
         })
     }
     /// The main thread of the program
-    fn main_loop(&mut self){
-        loop{
-
-        }
+    fn main_loop(&mut self) {
+        loop {}
     }
-    fn make_controller_thread(s: &ServiceController<Key, DataType, LinkType>)->ServiceClient<Key,DataType,LinkType>{
+    fn make_controller_thread(
+        s: &ServiceController<Key, DataType, LinkType>,
+    ) -> ServiceClient<Key, DataType, LinkType> {
         let c = s.add_service();
         std::thread::spawn(move || {
             s.main_loop();
@@ -277,7 +298,8 @@ impl<
         return client;
     }
 }
-fn new_client<Key:std::marker::Sync, DataType:std::marker::Sync, LinkType:std::marker::Sync> () -> (
+fn new_client<Key: std::marker::Sync, DataType: std::marker::Sync, LinkType: std::marker::Sync>(
+) -> (
     ServiceDB<Key, DataType, LinkType>,
     ServiceClient<Key, DataType, LinkType>,
 ) {
@@ -312,13 +334,13 @@ mod test {
         assert_eq!(db.get_command().unwrap(), Command::GetKeys(0));
     }
     #[test]
-    fn insert_and_get(){
+    fn insert_and_get() {
         let (mut db, mut c) = new_client::<u32, u32, u32>();
         block_on(c.insert(0, 0));
         let r = block_on(c.get(&0));
-        assert_eq!(r.ok().unwrap(),&0);
+        assert_eq!(r.ok().unwrap(), &0);
         block_on(c.insert(1, 1));
         let r = block_on(c.get(&1));
-        assert_eq!(r.ok().unwrap(),&1);
+        assert_eq!(r.ok().unwrap(), &1);
     }
 }
