@@ -298,7 +298,7 @@ LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone+Serialize+De
         return client;
     }
 }
-fn new_client<Key: std::marker::Sync, DataType: std::marker::Sync, LinkType: std::marker::Sync>(
+fn new_client<Key: std::marker::Sync+std::marker::Send, DataType: std::marker::Sync+std::marker::Send, LinkType: std::marker::Sync+std::marker::Send>(
 ) -> (
     ServiceDB<Key, DataType, LinkType>,
     ServiceClient<Key, DataType, LinkType>,
