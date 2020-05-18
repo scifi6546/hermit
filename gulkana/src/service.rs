@@ -82,20 +82,22 @@ impl<
     ///```
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
-    /// ds.insert_link(&9,&vec![10],0);
+    /// ds.insert_link(9,vec![10],0);
     /// let iter = ds.iter_links(&9).ok().unwrap();
-    ///
     /// for (i,j) in iter{
     ///     assert!(*j==5);
     /// }
     ///```
     pub fn insert_link(
         &mut self,
-        key: &Key,
-        children: &std::vec::Vec<Key>,
+        key: Key,
+        children: std::vec::Vec<Key>,
         link_type: LinkType,
     ) -> Result<(), errors::DBOperationError> {
-        Ok(())
+        match self.send_command(Command::InsertLink(key,children,link_type)){
+            InsertOk=>Ok(()),
+            _ =>Err(errors::DBOperationError::BrokenPipe)
+        }
     }
     ///Overwrites Links with vec shown
     ///```
@@ -187,7 +189,6 @@ impl<
     }
 
     /// Iterates through nodes attached to link
-    ///
     pub fn iter_links(&self, key: &Key) -> Result<(), errors::DBOperationError> {
         Ok(())
     }
@@ -195,11 +196,15 @@ impl<
     /// ```
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
-    /// assert!(ds.contains(&10));
-    /// assert!(!ds.contains(&20));
+    /// assert!(ds.contains(10).unwrap());
+    /// assert!(!ds.contains(20).unwrap());
     /// ```
-    pub fn contains(&self, key: &Key) -> bool {
-        false
+    pub fn contains(&mut self, key: Key) -> Option<bool> {
+        match self.send_command(Command::GetContains(key)){
+            CommandResult::Contains(val)=>Some(val),
+            _ =>None
+
+        }
     }
     /// Gets iterator of links with labels
     /// ```
@@ -332,13 +337,24 @@ impl<
             Command::GetKeys(key)=>self.get(key),
             Command::GetAllData=>self.getData(),
             Command::GetLinkTypeNOT_USED(_link)=>CommandResult::InsertOk,
+            Command::GetContains(key)=>self.getContains(key),
+            Command::InsertLink(key,children,link_type)=>self.insert_link(key,children,link_type),
             
+        }
+    }
+    fn insert_link(&mut self,key:Key,children:Vec<Key>,link_type:LinkType)->CommandResult<Key,DataType,LinkType>{
+        match self.db.insert_link(&key, &children, link_type){
+            Ok(data)=>CommandResult::InsertOk,
+            Err(data)=>CommandResult::Error(data)
         }
     }
     fn getData(&self)->CommandResult<Key,DataType,LinkType>{
         CommandResult::ReturnAllData(self.db.iter_data().map(|(a,b)|{
             (a.clone(),b.clone())}
         ).collect())
+    }
+    fn getContains(&self,key:Key)->CommandResult<Key,DataType,LinkType>{
+        CommandResult::Contains(self.db.contains(&key))
     }
     fn make_controller_thread<Args:'static + std::marker::Send>(
         s: fn(Args) -> ServiceController<Key, DataType, LinkType>,

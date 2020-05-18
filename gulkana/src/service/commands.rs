@@ -6,6 +6,8 @@ pub enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: 
     Insert(Key, DataType),
     GetLinkTypeNOT_USED(LinkType),
     GetAllData,
+    GetContains(Key),
+    InsertLink(Key,Vec<Key>,LinkType),
     //Used to send Quit service to database
     Quit,
 }
@@ -19,6 +21,7 @@ pub enum CommandResult<
     Quit,
     Error(errors::DBOperationError),
     ReturnAllData(Vec<(Key,DataType)>),
+    Contains(bool),
     /// ************************************************************************
     ///  ***********************************************************************
     ///  ***********************************************************************
