@@ -270,18 +270,24 @@ impl<
         self.tree.iter()
     }
     /// Used to iterate through data
-    ///
+    /// ```
+    ///  let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
+    ///  ds.insert(&10,3);
+    ///  for (key,data) in ds.iter_data(){
+    ///     assert_eq!(key,&10);
+    ///     assert_eq!(data,&3);
+    /// }
+    /// ````
     pub fn iter_data(&self) -> DataNodeIter<KeyType, DataType, LinkLabel> {
         return DataNodeIter { iter: self.iter() };
     }
     /// Gets All keys in database
-    ///
     /// ```
-    ///
     /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
     /// ds.insert(&10,5);
     /// let out = ds.get_keys();
     /// assert!(out[0]==10);
+    /// ```
     pub fn get_keys(&self) -> std::vec::Vec<KeyType> {
         return self.tree.keys().cloned().collect();
     }

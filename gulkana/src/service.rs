@@ -4,6 +4,8 @@ use futures::executor::block_on;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{channel, Receiver, Sender};
+mod iterators;
+use iterators::*;
 ///Service for use Database Side
 pub struct ServiceDB<
     Key: std::marker::Sync + std::marker::Send,
@@ -131,9 +133,19 @@ impl<
         Ok(())
     }
     /// Used to iterate through data
-    ///
-    pub fn iter_data(&self) {
-        ()
+    /// ```
+    ///  let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    ///  ds.insert(10,3);
+    ///  for (key,data) in ds.iter_data().unwrap(){
+    ///     assert_eq!(key,10);
+    ///     assert_eq!(data,3);
+    /// }
+    /// ````
+    pub fn iter_data(&mut self) ->Option<DataIter<Key,DataType>>{
+        match self.send_command(Command::GetAllData){
+            CommandResult::ReturnAllData(v)=>Some(DataIter::new(v)),
+            _ =>None
+        }
     }
     /// Gets All keys in database
     ///
@@ -247,6 +259,7 @@ enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std:
     GetKeys(Key),
     Insert(Key, DataType),
     GetLinkTypeNOT_USED(LinkType),
+    GetAllData,
     //Used to send Quit service to database
     Quit,
 }
@@ -259,6 +272,7 @@ enum CommandResult<
     Get(DataType),
     Quit,
     Error(errors::DBOperationError),
+    ReturnAllData(Vec<(Key,DataType)>),
     /// ************************************************************************
     ///  ***********************************************************************
     ///  ***********************************************************************
@@ -342,8 +356,13 @@ impl<
             Command::Quit=>CommandResult::Quit,
             Command::Insert(key,data)=>self.insert(key,data),
             Command::GetKeys(key)=>self.get(key),
+            Command::GetAllData=>self.getData(),
             Command::GetLinkTypeNOT_USED(_link)=>CommandResult::InsertOk,
+            
         }
+    }
+    fn getData(&self)->CommandResult<Key,DataType,LinkType>{
+        CommandResult::ReturnAllData(self.db.iter_data().map(|(a,b)|{(a.clone(),b.clone())}).collect())
     }
     fn make_controller_thread<Args:'static + std::marker::Send>(
         s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
