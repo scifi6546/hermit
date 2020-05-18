@@ -61,14 +61,12 @@ impl<
     }
     /// Inserts data into datastructure
     /// ```
-    /// let mut s = gulkana::ServiceController::<u32,u32,u32>::empty();
-    /// let mut c = s.add_service();
-    /// let t = std::thread::spawn(move || {
-    ///     c.insert(0,0);
-    ///     
-    /// });
+    ///  let mut s = gulkana::ServiceController::<u32,u32,u32>::empty();
+    ///  s.insert(0,0);
+    ///  assert_eq!(s.get(0).ok().unwrap(),0);
+    ///  s.quit();
     /// ```
-    pub async fn insert(
+    pub fn insert(
         &mut self,
         key: Key,
         data: DataType,
@@ -78,8 +76,8 @@ impl<
     }
     ///Used to insert a link into a datastructure
     ///```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
     /// ds.insert_link(&9,&vec![10],0);
     /// let iter = ds.iter_links(&9).ok().unwrap();
     ///
@@ -97,9 +95,9 @@ impl<
     }
     ///Overwrites Links with vec shown
     ///```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// ds.insert(&11,6);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert(11,6);
     /// ds.insert_link(&9,&vec![10],0);
     /// ds.overwrite_link(&9,&vec![11],0);
     /// ds.overwrite_link(&8,&vec![10],0);
@@ -124,10 +122,10 @@ impl<
     }
     /// sets data in database
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,3);
+    /// let mut ds =gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,3);
     /// ds.set_data(&10,&5);
-    /// assert!(ds.get(&10).ok().unwrap()==&5);
+    /// assert!(ds.get(10).ok().unwrap()==5);
     /// ```
     pub fn set_data(&mut self, key: &Key, data: &DataType) -> Result<(), errors::DBOperationError> {
         Ok(())
@@ -141,8 +139,8 @@ impl<
     ///
     /// ```
     ///
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
     /// let out = ds.get_keys();
     /// assert!(out[0]==10);
     pub fn get_keys(&self) -> std::vec::Vec<Key> {
@@ -160,9 +158,9 @@ impl<
     }
     /// Gets linked nodes
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// ds.insert(&11,6);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert(11,6);
     /// ds.insert_link(&9,&vec![10],0);
     /// let v = ds.get_links(&9).ok().unwrap();
     /// assert!(v[0]==10);
@@ -179,8 +177,8 @@ impl<
     }
     /// Checks if database contains a given key
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
     /// assert!(ds.contains(&10));
     /// assert!(!ds.contains(&20));
     /// ```
@@ -189,8 +187,8 @@ impl<
     }
     /// Gets iterator of links with labels
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
     /// ds.insert_link(&9,&vec![10],0);
     /// for (link,linked_keys) in ds.iter_link_type(&0){
     ///         assert!(link==9);
@@ -434,10 +432,10 @@ mod test {
     #[test]
     fn insert_and_get() {
         let mut c = ServiceController::<u32, u32, u32>::empty();
-        block_on(c.insert(0, 0));
+        c.insert(0, 0);
         let r = c.get(0);
         assert_eq!(r.ok().unwrap(), 0);
-        block_on(c.insert(1, 1));
+        c.insert(1, 1);
         let r = c.get(1);
         assert_eq!(r.ok().unwrap(), 1);
         c.quit();
