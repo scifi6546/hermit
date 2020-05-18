@@ -53,6 +53,12 @@ impl<
         self.send_commands.send(command);
         return self.recieve_result.recv().ok().unwrap();
     }
+    async fn get_result(&mut self) -> CommandResult<Key, DataType, LinkType> {
+        self.recieve_result.recv().ok().unwrap()
+    }
+    async fn quit(&mut self){
+        block_on(self.send_command(Command::Quit));
+    }
     /// Inserts data into datastructure
     /// ```
     /// let mut s = gulkana::ServiceController::<u32,u32,u32>::empty();
@@ -143,15 +149,14 @@ impl<
         vec![]
     }
     /// gets key from database
-    /// ```
-    ///
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// let data = ds.get(&10);
-    /// assert!(*data.ok().unwrap()==5);
-    /// ```
-    pub async fn get(&self, key: &Key) -> Result<&DataType, errors::DBOperationError> {
-        Err(errors::DBOperationError::BrokenPipe)
+    pub async fn get(&mut self, key: Key) -> Result<DataType, errors::DBOperationError> {
+        let res = block_on(self.send_command(Command::GetKeys(key)));
+        match res{
+            CommandResult::Get(Key,DataType,LinkType)=>Ok(DataType),
+            _ =>Err(errors::DBOperationError::BrokenPipe)
+
+        }
+        
     }
     /// Gets linked nodes
     /// ```
@@ -238,20 +243,23 @@ impl<
         0
     }
 }
+/// Used to send commands in between the Client and Master databases
 #[derive(std::fmt::Debug, std::cmp::PartialEq)]
 enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std::marker::Send> {
     GetKeys(Key),
     Insert(Key, DataType),
     GetLinkType(LinkType),
+    //Used to send Quit service to database
+    Quit,
 }
-struct CommandResult<
+enum CommandResult<
     Key: std::marker::Sync + std::marker::Send,
     DataType: std::marker::Sync + std::marker::Send,
     LinkType: std::marker::Sync + std::marker::Send,
 > {
-    key: Option<Key>,
-    data: Option<DataType>,
-    link: Option<LinkType>,
+    InsertOk,
+    Get(Key,DataType,LinkType),
+    Quit,
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
@@ -290,7 +298,45 @@ impl<
     }
     /// The main thread of the program
     fn main_loop(&mut self) {
-        loop {}
+        loop {
+            let mut quit = false;
+            let mut command_vec = vec![];
+            command_vec.reserve(self.service.len());
+            for mut service in &mut self.service{
+                command_vec.push(service.get_command());
+            }
+            let mut i=0;
+            let mut res_vec = vec![];
+            for mut command in command_vec{
+                //todo go through each task and try to get command
+                
+                if command.is_some(){
+                    let res = self.process_task(command.unwrap());
+                    let r = match res{
+                        CommandResult::Quit=>true,
+                        _ =>false,
+                    };
+                    if r==true{
+                        quit=true;
+                    }
+                    res_vec.push((i,res))
+                }
+                i+=1;
+                
+            }
+            for (i,res) in res_vec{
+                self.service[i].send_command_result(res);
+            }
+            if quit{
+                break;
+            }
+        }
+    }
+    fn process_task(&mut self,command: Command<Key,DataType,LinkType>)->CommandResult<Key,DataType,LinkType>{
+        match command{
+            Command::Quit=>CommandResult::Quit,
+            _=>CommandResult::InsertOk,
+        }
     }
     fn make_controller_thread<Args:'static + std::marker::Send>(
         s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
@@ -345,26 +391,26 @@ mod test {
         let t = std::thread::spawn(move || {
             block_on(c.send_command(Command::GetKeys(0)));
         });
-        db.send_command_result(CommandResult{
-            key:None,
-            data:None,
-            link:None,
-        });
+        db.send_command_result(CommandResult::InsertOk);
         thread::sleep(time::Duration::from_millis(10));
         
         #[allow(unused_must_use)]
         let _r = t.join();
         assert_eq!(db.get_command().unwrap(), Command::GetKeys(0));
-        
     }
     #[test]
+    fn quit_service_controller(){
+        let mut c = ServiceController::<u32,u32,u32>::empty();
+        block_on(c.quit());
+    }
+    //#[test]
     fn insert_and_get() {
-        let (mut db, mut c) = new_client::<u32, u32, u32>();
+        let mut c = ServiceController::<u32, u32, u32>::empty();
         block_on(c.insert(0, 0));
-        let r = block_on(c.get(&0));
-        assert_eq!(r.ok().unwrap(), &0);
+        let r = block_on(c.get(0));
+        assert_eq!(r.ok().unwrap(), 0);
         block_on(c.insert(1, 1));
-        let r = block_on(c.get(&1));
-        assert_eq!(r.ok().unwrap(), &1);
+        let r = block_on(c.get(1));
+        assert_eq!(r.ok().unwrap(), 1);
     }
 }
