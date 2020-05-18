@@ -700,19 +700,11 @@ mod tests {
         dsl.insert(&0, 0);
         dsl.insert(&1, 1);
         dsl.insert(&2, 2);
-        println!("inserted");
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
         let join = right_join(&dsr, &dsl).ok().unwrap();
-        println!("join ds: {}", join);
         assert!(join == dsl);
 
         dsr.insert(&4, 3);
         let join2 = right_join(&dsl, &dsr).ok().unwrap();
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
-
-        println!("join2 ds: {}", join);
         assert!(join2 != dsl);
         dsl.insert(&4, 3);
         assert!(join2 == dsl);
@@ -761,19 +753,15 @@ mod tests {
         dsl.insert(&1, 1);
         dsl.insert(&2, 2);
 
-        println!("inserted");
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
+
         let join = right_join(&dsr, &dsl).ok().unwrap();
 
         let join2 = right_join(&dsl, &dsr).ok().unwrap();
-        println!("join ds: {}", join);
+
 
         dsr.insert(&4, 3);
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
 
-        println!("join2 ds: {}", join);
+
         dsl.insert(&4, 3);
     }
     #[test]
@@ -854,7 +842,7 @@ mod tests {
         for i in &arr {
             ds.insert(i, *i);
         }
-        println!("{}", ds);
+        let _s = format!("{}", ds);
     }
     #[test]
     fn test_to_string_error() {
@@ -862,7 +850,7 @@ mod tests {
     }
     #[test]
     fn print_errors() {
-        println!(
+        format!(
             "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
             DBOperationError::KeyAllreadyPresent,
             DBOperationError::KeyNotFound,
@@ -887,6 +875,6 @@ mod tests {
             DBOperationError::Interrupted,
             DBOperationError::Other,
             DBOperationError::UnexpectedEof,
-        )
+        );
     }
 }

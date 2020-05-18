@@ -307,9 +307,7 @@ impl<
             }
             let mut i=0;
             let mut res_vec = vec![];
-            for mut command in command_vec{
-                //todo go through each task and try to get command
-                
+            for command in command_vec{                
                 if command.is_some(){
                     let res = self.process_task(command.unwrap());
                     let r = match res{
@@ -328,6 +326,7 @@ impl<
                 self.service[i].send_command_result(res);
             }
             if quit{
+                println!("quiting loop");
                 break;
             }
         }
@@ -401,6 +400,8 @@ mod test {
     #[test]
     fn quit_service_controller(){
         let mut c = ServiceController::<u32,u32,u32>::empty();
+        use std::{thread, time};
+        thread::sleep(time::Duration::from_millis(10));
         block_on(c.quit());
     }
     //#[test]
