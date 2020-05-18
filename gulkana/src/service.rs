@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::{channel, Receiver, Sender};
 mod iterators;
 use iterators::*;
+mod commands;
+use commands::*;
 ///Service for use Database Side
 pub struct ServiceDB<
     Key: std::marker::Sync + std::marker::Send,
@@ -133,6 +135,8 @@ impl<
         Ok(())
     }
     /// Used to iterate through data
+    /// Collects all data before sending iterator so on large databases a deep copy is made of the
+    /// entire databse before sending the iterator
     /// ```
     ///  let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     ///  ds.insert(10,3);
@@ -253,36 +257,6 @@ impl<
         0
     }
 }
-/// Used to send commands in between the Client and Master databases
-#[derive(std::fmt::Debug, std::cmp::PartialEq)]
-enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std::marker::Send> {
-    GetKeys(Key),
-    Insert(Key, DataType),
-    GetLinkTypeNOT_USED(LinkType),
-    GetAllData,
-    //Used to send Quit service to database
-    Quit,
-}
-enum CommandResult<
-    Key: std::marker::Sync + std::marker::Send,
-    DataType: std::marker::Sync + std::marker::Send,
-    LinkType: std::marker::Sync + std::marker::Send,
-> {
-    InsertOk,
-    Get(DataType),
-    Quit,
-    Error(errors::DBOperationError),
-    ReturnAllData(Vec<(Key,DataType)>),
-    /// ************************************************************************
-    ///  ***********************************************************************
-    ///  ***********************************************************************
-    /// FIX NOW!!!!!!!
-    /// ************************************************************************
-    /// ************************************************************************
-    /// ************************************************************************
-    /// ************************************************************************
-    MakeCompillerHappy(Key,DataType,LinkType)
-}
 ///Holds Database and Access to Services
 pub struct ServiceController<
     Key: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
@@ -362,7 +336,9 @@ impl<
         }
     }
     fn getData(&self)->CommandResult<Key,DataType,LinkType>{
-        CommandResult::ReturnAllData(self.db.iter_data().map(|(a,b)|{(a.clone(),b.clone())}).collect())
+        CommandResult::ReturnAllData(self.db.iter_data().map(|(a,b)|{
+            (a.clone(),b.clone())}
+        ).collect())
     }
     fn make_controller_thread<Args:'static + std::marker::Send>(
         s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
