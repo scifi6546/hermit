@@ -46,18 +46,18 @@ impl<
         LinkType: std::marker::Sync + std::marker::Send,
     > ServiceClient<Key, DataType, LinkType>
 {
-    async fn send_command(
+    fn send_command(
         &mut self,
         command: Command<Key, DataType, LinkType>,
     ) -> CommandResult<Key, DataType, LinkType> {
         self.send_commands.send(command);
         return self.recieve_result.recv().ok().unwrap();
     }
-    async fn get_result(&mut self) -> CommandResult<Key, DataType, LinkType> {
+    fn get_result(&mut self) -> CommandResult<Key, DataType, LinkType> {
         self.recieve_result.recv().ok().unwrap()
     }
-    async fn quit(&mut self){
-        block_on(self.send_command(Command::Quit));
+    pub fn quit(&mut self){
+        self.send_command(Command::Quit);
     }
     /// Inserts data into datastructure
     /// ```
@@ -149,10 +149,10 @@ impl<
         vec![]
     }
     /// gets key from database
-    pub async fn get(&mut self, key: Key) -> Result<DataType, errors::DBOperationError> {
-        let res = block_on(self.send_command(Command::GetKeys(key)));
+    pub fn get(&mut self, key: Key) -> Result<DataType, errors::DBOperationError> {
+        let res = self.send_command(Command::GetKeys(key));
         match res{
-            CommandResult::Get(Key,DataType,LinkType)=>Ok(DataType),
+            CommandResult::Get(data)=>Ok(data),
             _ =>Err(errors::DBOperationError::BrokenPipe)
 
         }
@@ -248,7 +248,7 @@ impl<
 enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std::marker::Send> {
     GetKeys(Key),
     Insert(Key, DataType),
-    GetLinkType(LinkType),
+    GetLinkTypeNOT_USED(LinkType),
     //Used to send Quit service to database
     Quit,
 }
@@ -258,8 +258,18 @@ enum CommandResult<
     LinkType: std::marker::Sync + std::marker::Send,
 > {
     InsertOk,
-    Get(Key,DataType,LinkType),
+    Get(DataType),
     Quit,
+    Error(errors::DBOperationError),
+    /// ************************************************************************
+    ///  ***********************************************************************
+    ///  ***********************************************************************
+    /// FIX NOW!!!!!!!
+    /// ************************************************************************
+    /// ************************************************************************
+    /// ************************************************************************
+    /// ************************************************************************
+    MakeCompillerHappy(Key,DataType,LinkType)
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
@@ -320,13 +330,11 @@ impl<
                     res_vec.push((i,res))
                 }
                 i+=1;
-                
             }
             for (i,res) in res_vec{
                 self.service[i].send_command_result(res);
             }
             if quit{
-                println!("quiting loop");
                 break;
             }
         }
@@ -334,7 +342,9 @@ impl<
     fn process_task(&mut self,command: Command<Key,DataType,LinkType>)->CommandResult<Key,DataType,LinkType>{
         match command{
             Command::Quit=>CommandResult::Quit,
-            _=>CommandResult::InsertOk,
+            Command::Insert(key,data)=>self.insert(key,data),
+            Command::GetKeys(key)=>self.get(key),
+            Command::GetLinkTypeNOT_USED(_link)=>CommandResult::InsertOk,
         }
     }
     fn make_controller_thread<Args:'static + std::marker::Send>(
@@ -344,8 +354,8 @@ impl<
         let (send, recieve) = channel();
         std::thread::spawn(move || {
             let mut controller = s(args);
-            controller.main_loop();
             send.send(controller.add_service());
+            controller.main_loop();
         });
         return recieve.recv().ok().unwrap();
     }
@@ -353,6 +363,23 @@ impl<
         let (db, client) = new_client();
         self.service.push(db);
         return client;
+    }
+    /// Inserts into database
+    fn insert(&mut self,key:Key,data:DataType)->CommandResult<Key,DataType,LinkType>{
+        let res = self.db.insert(&key, data);
+        if res.is_ok(){
+            return CommandResult::InsertOk
+        }else{
+            return CommandResult::Error(res.err().unwrap());
+        }
+    }
+    fn get(&mut self,key:Key)->CommandResult<Key,DataType,LinkType>{
+        let res = self.db.get(&key);
+        if res.is_ok(){
+            return CommandResult::Get(res.ok().unwrap().clone())
+        }else{
+            return CommandResult::Error(res.err().unwrap());
+        }
     }
 }
 fn new_client<
@@ -388,7 +415,7 @@ mod test {
         use std::{thread, time};
         let (mut db, mut c) = new_client::<u32, u32, u32>();
         let t = std::thread::spawn(move || {
-            block_on(c.send_command(Command::GetKeys(0)));
+            c.send_command(Command::GetKeys(0));
         });
         db.send_command_result(CommandResult::InsertOk);
         thread::sleep(time::Duration::from_millis(10));
@@ -402,16 +429,17 @@ mod test {
         let mut c = ServiceController::<u32,u32,u32>::empty();
         use std::{thread, time};
         thread::sleep(time::Duration::from_millis(10));
-        block_on(c.quit());
+        c.quit();
     }
-    //#[test]
+    #[test]
     fn insert_and_get() {
         let mut c = ServiceController::<u32, u32, u32>::empty();
         block_on(c.insert(0, 0));
-        let r = block_on(c.get(0));
+        let r = c.get(0);
         assert_eq!(r.ok().unwrap(), 0);
         block_on(c.insert(1, 1));
-        let r = block_on(c.get(1));
+        let r = c.get(1);
         assert_eq!(r.ok().unwrap(), 1);
+        c.quit();
     }
 }
