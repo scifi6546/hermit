@@ -120,11 +120,15 @@ impl<
     /// ````
     pub fn overwrite_link(
         &mut self,
-        key: &Key,
-        children: &std::vec::Vec<Key>,
+        key: Key,
+        children: std::vec::Vec<Key>,
         link_type: LinkType,
     ) -> Result<(), errors::DBOperationError> {
-        Ok(())
+        match self.send_command(Command::OverwriteLink(key,children,link_type)){
+            CommandResult::InsertOk=>Ok(()),
+            CommandResult::Error(e)=>Err(e),
+            _ => Err(errors::DBOperationError::Other)
+        }
     }
     /// sets data in database
     /// ```
@@ -348,7 +352,14 @@ impl<
             Command::GetContains(key)=>self.getContains(key),
             Command::InsertLink(key,children,link_type)=>self.insert_link(key,children,link_type),
             Command::GetLinkedData(key)=>self.get_linked_data(key),
-            Command::OverwriteData(key,data)=>self.overwrite_data(key,data)
+            Command::OverwriteData(key,data)=>self.overwrite_data(key,data),
+            Command::OverwriteLink(key,linked_keys,link_type)=>self.overwrite_link(key,linked_keys,link_type),
+        }
+    }
+    fn overwrite_link(&mut self,key:Key,linked_keys:Vec<Key>,link_type:LinkType)->CommandResult<Key,DataType,LinkType>{
+        match self.db.overwrite_link(&key, &linked_keys, link_type){
+            Ok(_)=>CommandResult::InsertOk,
+            Err(e)=>CommandResult::Error(e)
         }
     }
     fn overwrite_data(&mut self,key:Key,data:DataType)->CommandResult<Key,DataType,LinkType>{

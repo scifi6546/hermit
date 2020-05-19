@@ -10,6 +10,7 @@ pub enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: 
     InsertLink(Key,Vec<Key>,LinkType),
     GetLinkedData(Key),
     OverwriteData(Key,DataType),
+    OverwriteLink(Key,Vec<Key>,LinkType),
     //Used to send Quit service to database
     Quit,
 }
