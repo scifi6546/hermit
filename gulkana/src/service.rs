@@ -158,7 +158,7 @@ impl<
     ///     assert_eq!(data,3);
     /// }
     /// ````
-    pub fn iter_data(&mut self) ->Option<DataIter<Key,DataType>>{
+    pub fn iter_data(&mut self) ->Option<DataIter<(Key,DataType)>>{
         match self.send_command(Command::GetAllData){
             CommandResult::ReturnAllData(v)=>Some(DataIter::new(v)),
             _ =>None
@@ -168,11 +168,15 @@ impl<
     /// ```
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
-    /// let out = ds.get_keys();
+    /// let out = ds.get_keys().ok().unwrap();
     /// assert!(out[0]==10);
     /// ```
-    pub fn get_keys(&self) -> std::vec::Vec<Key> {
-        vec![]
+    pub fn get_keys(&mut self) -> Result<std::vec::Vec<Key>,errors::DBOperationError> {
+        match self.send_command(Command::GetAllKeys){
+            CommandResult::GetAllKeys(k)=>Ok(k),
+            CommandResult::Error(e)=>Err(e),
+            _ =>Err(errors::DBOperationError::Other)
+        }
     }
     /// gets key from database
     pub fn get(&mut self, key: Key) -> Result<DataType, errors::DBOperationError> {
@@ -203,7 +207,7 @@ impl<
     }
 
     /// Iterates through nodes attached to link
-    pub fn iter_links(&mut self, key: Key) -> Result<DataIter<Key,DataType>, errors::DBOperationError> {
+    pub fn iter_links(&mut self, key: Key) -> Result<DataIter<(Key,DataType)>, errors::DBOperationError> {
         match self.send_command(Command::GetLinkedData(key)){
             CommandResult::GetLinkedData(v)=>Ok(DataIter::new(v)),
             CommandResult::Error(e)=>Err(e),
@@ -229,14 +233,19 @@ impl<
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
     /// ds.insert_link(9,vec![10],0);
-    /// for (link,linked_keys) in ds.iter_link_type(0){
+    /// for (link,linked_keys) in ds.iter_link_type(0).ok().unwrap(){
     ///         assert!(link==9);
     /// }
     /// ```
-    pub fn iter_link_type(&self, link_type: LinkType) -> ()
+    pub fn iter_link_type(&mut self, link_type: LinkType) -> Result<DataIter<(Key,Vec<Key>)>,errors::DBOperationError>
     where
         LinkType: std::cmp::PartialEq,
     {
+        match self.send_command(Command::IterLinkType(link_type)){
+            CommandResult::IterLinkType(a)=>Ok(DataIter::new(a)),
+            CommandResult::Error(e)=>Err(e),
+            _=>Err(errors::DBOperationError::Other)
+        }
     }
     pub fn append_links(
         &mut self,
@@ -297,7 +306,7 @@ impl<
             + std::cmp::Ord
             + DeserializeOwned,
         DataType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
-        LinkType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
+        LinkType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned+std::cmp::PartialEq,
     > ServiceController<Key, DataType, LinkType>
 {
     pub fn backed(
@@ -361,7 +370,17 @@ impl<
             Command::OverwriteData(key,data)=>self.overwrite_data(key,data),
             Command::OverwriteLink(key,linked_keys,link_type)=>self.overwrite_link(key,linked_keys,link_type),
             Command::GetLinkedKeys(key)=>self.get_linked_keys(key),
+            Command::GetAllKeys=>self.get_all_keys(),
+            Command::IterLinkType(l)=>self.iter_link_type(l),
         }
+    }
+    fn iter_link_type(&mut self,link:LinkType)->CommandResult<Key,DataType,LinkType>{
+        
+        CommandResult::IterLinkType(self.db.iter_link_type(&link).map(|(k,v)|{(k,v.clone())}).collect::<Vec<(Key,Vec<Key>)>>().clone())
+    }
+    fn get_all_keys(&mut self)->CommandResult<Key,DataType,LinkType>{
+        CommandResult::GetAllKeys(self.db.get_keys())
+
     }
     fn get_linked_keys(&mut self,key:Key)->CommandResult<Key,DataType,LinkType>{
         match self.db.get_links(&key){

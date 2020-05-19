@@ -1,17 +1,17 @@
-pub struct DataIter<KeyType,DataType>{
-    data: Vec<(KeyType,DataType)>,
+pub struct DataIter<Item>{
+    data: Vec<Item>,
     current_index:usize,
 }
-impl<KeyType,DataType> DataIter<KeyType,DataType>{
-    pub fn new(data:Vec<(KeyType,DataType)>)->Self{
+impl<Item> DataIter<Item>{
+    pub fn new(data:Vec<Item>)->Self{
         Self{
             data:data,
             current_index:0,
         }
     }
 }
-impl<KeyType:std::clone::Clone,DataType:std::clone::Clone> Iterator for DataIter<KeyType,DataType>{
-    type Item = (KeyType,DataType);
+impl<Item:std::clone::Clone> Iterator for DataIter<Item>{
+    type Item = Item;
     fn next(&mut self)->Option<Self::Item>{
         if self.current_index<self.data.len(){
             let item = self.data[self.current_index].clone();

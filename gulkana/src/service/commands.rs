@@ -12,6 +12,8 @@ pub enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: 
     OverwriteData(Key,DataType),
     OverwriteLink(Key,Vec<Key>,LinkType),
     GetLinkedKeys(Key),
+    GetAllKeys,
+    IterLinkType(LinkType),
     //Used to send Quit service to database
     Quit,
 }
@@ -28,6 +30,8 @@ pub enum CommandResult<
     Contains(bool),
     GetLinkedData(Vec<(Key,DataType)>),
     GetLinkedKeys(Vec<Key>),
+    GetAllKeys(Vec<Key>),
+    IterLinkType(Vec<(Key,Vec<Key>)>),
     /// ************************************************************************
     ///  ***********************************************************************
     ///  ***********************************************************************
