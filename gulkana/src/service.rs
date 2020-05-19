@@ -75,8 +75,11 @@ impl<
         key: Key,
         data: DataType,
     ) -> Result<(), errors::DBOperationError> {
-        self.send_command(Command::Insert(key, data));
-        Ok(())
+        match self.send_command(Command::Insert(key, data)){
+            CommandResult::InsertOk=>Ok(()),
+            CommandResult::Error(e)=>Err(e),
+            _=>Err(errors::DBOperationError::Other)
+        }
     }
     ///Used to insert a link into a datastructure
     ///```
@@ -162,13 +165,12 @@ impl<
         }
     }
     /// Gets All keys in database
-    ///
     /// ```
-    ///
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
     /// let out = ds.get_keys();
     /// assert!(out[0]==10);
+    /// ```
     pub fn get_keys(&self) -> std::vec::Vec<Key> {
         vec![]
     }
@@ -177,7 +179,7 @@ impl<
         let res = self.send_command(Command::GetKeys(key));
         match res{
             CommandResult::Get(data)=>Ok(data),
-            _ =>Err(errors::DBOperationError::BrokenPipe)
+            _ =>Err(errors::DBOperationError::Other)
 
         }
         
@@ -192,8 +194,12 @@ impl<
     /// assert!(v[0]==10);
     /// ````
 
-    pub fn get_links(&self, key: Key) -> Result<Vec<Key>, errors::DBOperationError> {
-        Ok(vec![])
+    pub fn get_links(&mut self, key: Key) -> Result<Vec<Key>, errors::DBOperationError> {
+        match self.send_command(Command::GetLinkedKeys(key)){
+            CommandResult::GetLinkedKeys(v)=>Ok(v),
+            CommandResult::Error(e)=>Err(e),
+            _ =>Err(errors::DBOperationError::Other),
+        }
     }
 
     /// Iterates through nodes attached to link
@@ -354,6 +360,13 @@ impl<
             Command::GetLinkedData(key)=>self.get_linked_data(key),
             Command::OverwriteData(key,data)=>self.overwrite_data(key,data),
             Command::OverwriteLink(key,linked_keys,link_type)=>self.overwrite_link(key,linked_keys,link_type),
+            Command::GetLinkedKeys(key)=>self.get_linked_keys(key),
+        }
+    }
+    fn get_linked_keys(&mut self,key:Key)->CommandResult<Key,DataType,LinkType>{
+        match self.db.get_links(&key){
+            Ok(data)=>CommandResult::GetLinkedKeys(data.clone()),
+            Err(e)=>CommandResult::Error(e)
         }
     }
     fn overwrite_link(&mut self,key:Key,linked_keys:Vec<Key>,link_type:LinkType)->CommandResult<Key,DataType,LinkType>{
