@@ -83,9 +83,9 @@ impl<
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
     /// ds.insert_link(9,vec![10],0);
-    /// let iter = ds.iter_links(&9).ok().unwrap();
+    /// let iter = ds.iter_links(9).ok().unwrap();
     /// for (i,j) in iter{
-    ///     assert!(*j==5);
+    ///     assert!(j==5);
     /// }
     ///```
     pub fn insert_link(
@@ -104,18 +104,18 @@ impl<
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
     /// ds.insert(11,6);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// ds.overwrite_link(&9,&vec![11],0);
-    /// ds.overwrite_link(&8,&vec![10],0);
-    /// let iter = ds.iter_links(&9).ok().unwrap();
+    /// ds.insert_link(9,vec![10],0);
+    /// ds.overwrite_link(9,vec![11],0);
+    /// ds.overwrite_link(8,vec![10],0);
+    /// let iter = ds.iter_links(9).ok().unwrap();
     ///
     /// for (_key,data) in iter{
-    ///     assert!(*data==6);
+    ///     assert!(data==6);
     /// }
-    /// let iter2 = ds.iter_links(&8).ok().unwrap();
+    /// let iter2 = ds.iter_links(8).ok().unwrap();
     ///
     /// for (_key,data) in iter2{
-    ///     assert!(*data==5);
+    ///     assert!(data==5);
     /// }
     /// ````
     pub fn overwrite_link(
@@ -128,13 +128,17 @@ impl<
     }
     /// sets data in database
     /// ```
-    /// let mut ds =gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,3);
-    /// ds.set_data(&10,&5);
+    /// ds.set_data(10,5);
     /// assert!(ds.get(10).ok().unwrap()==5);
     /// ```
-    pub fn set_data(&mut self, key: &Key, data: &DataType) -> Result<(), errors::DBOperationError> {
-        Ok(())
+    pub fn set_data(&mut self, key: Key, data: DataType) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::OverwriteData(key,data)){
+            CommandResult::InsertOk=>Ok(()),
+            CommandResult::Error(e)=>Err(e),
+            _ =>Err(errors::DBOperationError::Other)
+        }
     }
     /// Used to iterate through data
     /// Collects all data before sending iterator so on large databases a deep copy is made of the
@@ -179,18 +183,22 @@ impl<
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
     /// ds.insert(11,6);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// let v = ds.get_links(&9).ok().unwrap();
+    /// ds.insert_link(9,vec![10],0);
+    /// let v = ds.get_links(9).ok().unwrap();
     /// assert!(v[0]==10);
     /// ````
 
-    pub fn get_links(&self, key: &Key) -> Result<Vec<Key>, errors::DBOperationError> {
+    pub fn get_links(&self, key: Key) -> Result<Vec<Key>, errors::DBOperationError> {
         Ok(vec![])
     }
 
     /// Iterates through nodes attached to link
-    pub fn iter_links(&self, key: &Key) -> Result<(), errors::DBOperationError> {
-        Ok(())
+    pub fn iter_links(&mut self, key: Key) -> Result<DataIter<Key,DataType>, errors::DBOperationError> {
+        match self.send_command(Command::GetLinkedData(key)){
+            CommandResult::GetLinkedData(v)=>Ok(DataIter::new(v)),
+            CommandResult::Error(e)=>Err(e),
+            _ =>Err(errors::DBOperationError::Other)
+        }
     }
     /// Checks if database contains a given key
     /// ```
@@ -210,8 +218,8 @@ impl<
     /// ```
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(10,5);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// for (link,linked_keys) in ds.iter_link_type(&0){
+    /// ds.insert_link(9,vec![10],0);
+    /// for (link,linked_keys) in ds.iter_link_type(0){
     ///         assert!(link==9);
     /// }
     /// ```
@@ -339,8 +347,25 @@ impl<
             Command::GetLinkTypeNOT_USED(_link)=>CommandResult::InsertOk,
             Command::GetContains(key)=>self.getContains(key),
             Command::InsertLink(key,children,link_type)=>self.insert_link(key,children,link_type),
-            
+            Command::GetLinkedData(key)=>self.get_linked_data(key),
+            Command::OverwriteData(key,data)=>self.overwrite_data(key,data)
         }
+    }
+    fn overwrite_data(&mut self,key:Key,data:DataType)->CommandResult<Key,DataType,LinkType>{
+        match self.db.set_data(&key, &data){
+            Ok(_i)=>CommandResult::InsertOk,
+            Err(e)=>CommandResult::Error(e)
+        }
+    }
+    fn get_linked_data(&self,key:Key)->CommandResult<Key,DataType,LinkType>{
+        let data = self.db.get_links(&key);
+        if data.is_ok(){
+            let d = data.ok().unwrap().iter().map(|temp_key|{(temp_key.clone(),self.db.get(&temp_key).ok().unwrap().clone())}).collect();
+            CommandResult::GetLinkedData(d)
+        }else{
+            return CommandResult::Error(errors::DBOperationError::Other)
+        }
+        
     }
     fn insert_link(&mut self,key:Key,children:Vec<Key>,link_type:LinkType)->CommandResult<Key,DataType,LinkType>{
         match self.db.insert_link(&key, &children, link_type){
