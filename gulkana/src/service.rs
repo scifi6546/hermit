@@ -223,7 +223,7 @@ impl<
     ///         assert!(link==9);
     /// }
     /// ```
-    pub fn iter_link_type(&self, link_type: &LinkType) -> ()
+    pub fn iter_link_type(&self, link_type: LinkType) -> ()
     where
         LinkType: std::cmp::PartialEq,
     {
@@ -261,9 +261,9 @@ impl<
     }
     /// Gets number of elements in db
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// assert!(ds.len()==0);
-    /// ds.insert(&20,20);
+    /// ds.insert(20,20);
     /// assert!(ds.len()==1);
     /// ```
     pub fn len(&self) -> usize {
