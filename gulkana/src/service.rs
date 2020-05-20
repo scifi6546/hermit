@@ -247,10 +247,21 @@ impl<
             _=>Err(errors::DBOperationError::Other)
         }
     }
+    /// ```
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert(11,5);
+    /// ds.insert_link(9,vec![10],0);
+    /// let v = ds.get_links(9).ok().unwrap();
+    /// assert_eq!(v[0],10);
+    /// ds.append_links(9,11);
+    /// let v2 = ds.get_links(9).ok().unwrap();
+    /// assert_eq!(v2,vec![10,11]);
+    /// ```
     pub fn append_links(
         &mut self,
-        key: &Key,
-        key_append: &Key,
+        key: Key,
+        key_append: Key,
     ) -> Result<(), errors::DBOperationError> {
         Err(errors::DBOperationError::NodeNotLink)
     }
@@ -265,6 +276,11 @@ impl<
     {
         Err(errors::DBOperationError::NodeNotLink)
     }
+    ///
+    /// ```
+    ///  let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    ///   let s = ds.to_string();
+    /// ```
     pub fn to_string(&self) -> Result<std::string::String, errors::SerializeError>
     where
         Key: Serialize,
@@ -275,15 +291,27 @@ impl<
     }
     /// Makes the database backed
     ///
-    pub fn make_backed(&mut self, file_backing: &String) -> Result<(), errors::DBOperationError> {
+    /// ```
+    /// std::fs::remove_file("ds.json");
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(1,1);
+    /// ds.make_backed("ds.json".to_string());
+    /// ds.quit();
+    /// let mut ds2 = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds2.make_backed("ds.json".to_string());
+    /// assert_eq!(ds2.get(1).ok().unwrap(),1);
+    /// 
+    /// ```
+    pub fn make_backed(&mut self, file_backing: String) -> Result<(), errors::DBOperationError> {
+
         Ok(())
     }
     /// Gets number of elements in db
     /// ```
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
-    /// assert!(ds.len()==0);
+    /// assert_eq!(ds.len(),0);
     /// ds.insert(20,20);
-    /// assert!(ds.len()==1);
+    /// assert_eq!(ds.len(),1);
     /// ```
     pub fn len(&self) -> usize {
         0
@@ -372,6 +400,15 @@ impl<
             Command::GetLinkedKeys(key)=>self.get_linked_keys(key),
             Command::GetAllKeys=>self.get_all_keys(),
             Command::IterLinkType(l)=>self.iter_link_type(l),
+            Command::MakeBacked(s)=>self.make_backed(s),
+        }
+    }
+    fn make_backed(&mut self,backing:String)->CommandResult<Key,DataType,LinkType>{
+        let r = self.db.make_backed(&backing);
+        match r{
+            Ok(_)=>CommandResult::InsertOk,
+            Err(e)=>CommandResult::Error(e),
+            _ =>CommandResult::Error(errors::DBOperationError::Other)
         }
     }
     fn iter_link_type(&mut self,link:LinkType)->CommandResult<Key,DataType,LinkType>{
