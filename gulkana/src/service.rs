@@ -1,8 +1,7 @@
 use crate::errors;
 use crate::{backed_datastructure, new_datastructure, DataStructure};
-use futures::executor::block_on;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::sync::mpsc::{channel, Receiver, Sender};
 mod iterators;
 use iterators::*;
@@ -31,7 +30,7 @@ impl<
             None
         }
     }
-    fn send_command_result(&mut self,res: CommandResult<Key,DataType,LinkType>){
+    fn send_command_result(&mut self, res: CommandResult<Key, DataType, LinkType>) {
         self.send_result.send(res);
     }
 }
@@ -57,10 +56,7 @@ impl<
         self.send_commands.send(command);
         return self.recieve_result.recv().ok().unwrap();
     }
-    fn get_result(&mut self) -> CommandResult<Key, DataType, LinkType> {
-        self.recieve_result.recv().ok().unwrap()
-    }
-    pub fn quit(&mut self){
+    pub fn quit(&mut self) {
         self.send_command(Command::Quit);
     }
     /// Inserts data into datastructure
@@ -70,15 +66,11 @@ impl<
     ///  assert_eq!(s.get(0).ok().unwrap(),0);
     ///  s.quit();
     /// ```
-    pub fn insert(
-        &mut self,
-        key: Key,
-        data: DataType,
-    ) -> Result<(), errors::DBOperationError> {
-        match self.send_command(Command::Insert(key, data)){
-            CommandResult::InsertOk=>Ok(()),
-            CommandResult::Error(e)=>Err(e),
-            _=>Err(errors::DBOperationError::Other)
+    pub fn insert(&mut self, key: Key, data: DataType) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::Insert(key, data)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     ///Used to insert a link into a datastructure
@@ -97,9 +89,9 @@ impl<
         children: std::vec::Vec<Key>,
         link_type: LinkType,
     ) -> Result<(), errors::DBOperationError> {
-        match self.send_command(Command::InsertLink(key,children,link_type)){
-            InsertOk=>Ok(()),
-            _ =>Err(errors::DBOperationError::BrokenPipe)
+        match self.send_command(Command::InsertLink(key, children, link_type)) {
+            CommandResult::InsertOk => Ok(()),
+            _ => Err(errors::DBOperationError::BrokenPipe),
         }
     }
     ///Overwrites Links with vec shown
@@ -127,10 +119,10 @@ impl<
         children: std::vec::Vec<Key>,
         link_type: LinkType,
     ) -> Result<(), errors::DBOperationError> {
-        match self.send_command(Command::OverwriteLink(key,children,link_type)){
-            CommandResult::InsertOk=>Ok(()),
-            CommandResult::Error(e)=>Err(e),
-            _ => Err(errors::DBOperationError::Other)
+        match self.send_command(Command::OverwriteLink(key, children, link_type)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// sets data in database
@@ -141,10 +133,10 @@ impl<
     /// assert!(ds.get(10).ok().unwrap()==5);
     /// ```
     pub fn set_data(&mut self, key: Key, data: DataType) -> Result<(), errors::DBOperationError> {
-        match self.send_command(Command::OverwriteData(key,data)){
-            CommandResult::InsertOk=>Ok(()),
-            CommandResult::Error(e)=>Err(e),
-            _ =>Err(errors::DBOperationError::Other)
+        match self.send_command(Command::OverwriteData(key, data)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// Used to iterate through data
@@ -158,10 +150,10 @@ impl<
     ///     assert_eq!(data,3);
     /// }
     /// ````
-    pub fn iter_data(&mut self) ->Option<DataIter<(Key,DataType)>>{
-        match self.send_command(Command::GetAllData){
-            CommandResult::ReturnAllData(v)=>Some(DataIter::new(v)),
-            _ =>None
+    pub fn iter_data(&mut self) -> Option<DataIter<(Key, DataType)>> {
+        match self.send_command(Command::GetAllData) {
+            CommandResult::ReturnAllData(v) => Some(DataIter::new(v)),
+            _ => None,
         }
     }
     /// Gets All keys in database
@@ -171,22 +163,20 @@ impl<
     /// let out = ds.get_keys().ok().unwrap();
     /// assert!(out[0]==10);
     /// ```
-    pub fn get_keys(&mut self) -> Result<std::vec::Vec<Key>,errors::DBOperationError> {
-        match self.send_command(Command::GetAllKeys){
-            CommandResult::GetAllKeys(k)=>Ok(k),
-            CommandResult::Error(e)=>Err(e),
-            _ =>Err(errors::DBOperationError::Other)
+    pub fn get_keys(&mut self) -> Result<std::vec::Vec<Key>, errors::DBOperationError> {
+        match self.send_command(Command::GetAllKeys) {
+            CommandResult::GetAllKeys(k) => Ok(k),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// gets key from database
     pub fn get(&mut self, key: Key) -> Result<DataType, errors::DBOperationError> {
         let res = self.send_command(Command::GetKeys(key));
-        match res{
-            CommandResult::Get(data)=>Ok(data),
-            _ =>Err(errors::DBOperationError::Other)
-
+        match res {
+            CommandResult::Get(data) => Ok(data),
+            _ => Err(errors::DBOperationError::Other),
         }
-        
     }
     /// Gets linked nodes
     /// ```
@@ -199,19 +189,22 @@ impl<
     /// ````
 
     pub fn get_links(&mut self, key: Key) -> Result<Vec<Key>, errors::DBOperationError> {
-        match self.send_command(Command::GetLinkedKeys(key)){
-            CommandResult::GetLinkedKeys(v)=>Ok(v),
-            CommandResult::Error(e)=>Err(e),
-            _ =>Err(errors::DBOperationError::Other),
+        match self.send_command(Command::GetLinkedKeys(key)) {
+            CommandResult::GetLinkedKeys(v) => Ok(v),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
 
     /// Iterates through nodes attached to link
-    pub fn iter_links(&mut self, key: Key) -> Result<DataIter<(Key,DataType)>, errors::DBOperationError> {
-        match self.send_command(Command::GetLinkedData(key)){
-            CommandResult::GetLinkedData(v)=>Ok(DataIter::new(v)),
-            CommandResult::Error(e)=>Err(e),
-            _ =>Err(errors::DBOperationError::Other)
+    pub fn iter_links(
+        &mut self,
+        key: Key,
+    ) -> Result<DataIter<(Key, DataType)>, errors::DBOperationError> {
+        match self.send_command(Command::GetLinkedData(key)) {
+            CommandResult::GetLinkedData(v) => Ok(DataIter::new(v)),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// Checks if database contains a given key
@@ -222,10 +215,9 @@ impl<
     /// assert!(!ds.contains(20).unwrap());
     /// ```
     pub fn contains(&mut self, key: Key) -> Option<bool> {
-        match self.send_command(Command::GetContains(key)){
-            CommandResult::Contains(val)=>Some(val),
-            _ =>None
-
+        match self.send_command(Command::GetContains(key)) {
+            CommandResult::Contains(val) => Some(val),
+            _ => None,
         }
     }
     /// Gets iterator of links with labels
@@ -237,14 +229,17 @@ impl<
     ///         assert!(link==9);
     /// }
     /// ```
-    pub fn iter_link_type(&mut self, link_type: LinkType) -> Result<DataIter<(Key,Vec<Key>)>,errors::DBOperationError>
+    pub fn iter_link_type(
+        &mut self,
+        link_type: LinkType,
+    ) -> Result<DataIter<(Key, Vec<Key>)>, errors::DBOperationError>
     where
         LinkType: std::cmp::PartialEq,
     {
-        match self.send_command(Command::IterLinkType(link_type)){
-            CommandResult::IterLinkType(a)=>Ok(DataIter::new(a)),
-            CommandResult::Error(e)=>Err(e),
-            _=>Err(errors::DBOperationError::Other)
+        match self.send_command(Command::IterLinkType(link_type)) {
+            CommandResult::IterLinkType(a) => Ok(DataIter::new(a)),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// ```
@@ -292,19 +287,21 @@ impl<
     /// Makes the database backed
     ///
     /// ```
-    /// std::fs::remove_file("ds.json");
+    /// std::fs::remove_file("db.json");
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
     /// ds.insert(1,1);
-    /// ds.make_backed("ds.json".to_string());
+    /// ds.make_backed("db.json".to_string());
     /// ds.quit();
-    /// let mut ds2 = gulkana::ServiceController::<u32,u32,u32>::empty();
-    /// ds2.make_backed("ds.json".to_string());
+    /// let mut ds2 = gulkana::ServiceController::<u32,u32,u32>::backed("db.json".to_string()).ok().unwrap();
     /// assert_eq!(ds2.get(1).ok().unwrap(),1);
-    /// 
+    ///
     /// ```
     pub fn make_backed(&mut self, file_backing: String) -> Result<(), errors::DBOperationError> {
-
-        Ok(())
+        match self.send_command(Command::MakeBacked(file_backing)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
     }
     /// Gets number of elements in db
     /// ```
@@ -319,38 +316,54 @@ impl<
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
-    Key: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
-    DataType: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
-    LinkType: 'static+ std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    Key: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
+    DataType: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
     db: DataStructure<Key, DataType, LinkType>,
     service: Vec<ServiceDB<Key, DataType, LinkType>>,
 }
 impl<
-        Key: 'static+std::marker::Sync
+        Key: 'static
+            + std::marker::Sync
             + std::marker::Send
             + std::clone::Clone
             + Serialize
             + std::cmp::Ord
             + DeserializeOwned,
-        DataType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned,
-        LinkType: 'static+std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + DeserializeOwned+std::cmp::PartialEq,
+        DataType: 'static
+            + std::marker::Sync
+            + std::marker::Send
+            + std::clone::Clone
+            + Serialize
+            + DeserializeOwned,
+        LinkType: 'static
+            + std::marker::Sync
+            + std::marker::Send
+            + std::clone::Clone
+            + Serialize
+            + DeserializeOwned
+            + std::cmp::PartialEq,
     > ServiceController<Key, DataType, LinkType>
 {
     pub fn backed(
         path: String,
     ) -> Result<ServiceClient<Key, DataType, LinkType>, crate::errors::DBOperationError> {
-        let c:fn(String)-> ServiceController<Key, DataType, LinkType>= |path| {ServiceController {
-            db: backed_datastructure(&path).ok().unwrap(),
-            service: vec![],
-        }};
-        Ok(Self::make_controller_thread(c,path))
+        let c: fn(String) -> ServiceController<Key, DataType, LinkType> =
+            |path| ServiceController {
+                db: backed_datastructure(&path).ok().unwrap(),
+                service: vec![],
+            };
+        Ok(Self::make_controller_thread(c, path))
     }
     pub fn empty() -> ServiceClient<Key, DataType, LinkType> {
-        Self::make_controller_thread(|()|{ServiceController {
-            db: new_datastructure(),
-            service: vec![],
-        }},())
+        Self::make_controller_thread(
+            |()| ServiceController {
+                db: new_datastructure(),
+                service: vec![],
+            },
+            (),
+        )
     }
     /// The main thread of the program
     fn main_loop(&mut self) {
@@ -358,112 +371,149 @@ impl<
             let mut quit = false;
             let mut command_vec = vec![];
             command_vec.reserve(self.service.len());
-            for mut service in &mut self.service{
+            for mut service in &mut self.service {
                 command_vec.push(service.get_command());
             }
-            let mut i=0;
+            let mut i = 0;
             let mut res_vec = vec![];
-            for command in command_vec{                
-                if command.is_some(){
+            for command in command_vec {
+                if command.is_some() {
                     let res = self.process_task(command.unwrap());
-                    let r = match res{
-                        CommandResult::Quit=>true,
-                        _ =>false,
+                    let r = match res {
+                        CommandResult::Quit => true,
+                        _ => false,
                     };
-                    if r==true{
-                        quit=true;
+                    if r == true {
+                        quit = true;
                     }
-                    res_vec.push((i,res))
+                    res_vec.push((i, res))
                 }
-                i+=1;
+                i += 1;
             }
-            for (i,res) in res_vec{
+            for (i, res) in res_vec {
                 self.service[i].send_command_result(res);
             }
-            if quit{
+            if quit {
                 break;
             }
         }
     }
-    fn process_task(&mut self,command: Command<Key,DataType,LinkType>)->CommandResult<Key,DataType,LinkType>{
-        match command{
-            Command::Quit=>CommandResult::Quit,
-            Command::Insert(key,data)=>self.insert(key,data),
-            Command::GetKeys(key)=>self.get(key),
-            Command::GetAllData=>self.getData(),
-            Command::GetLinkTypeNOT_USED(_link)=>CommandResult::InsertOk,
-            Command::GetContains(key)=>self.getContains(key),
-            Command::InsertLink(key,children,link_type)=>self.insert_link(key,children,link_type),
-            Command::GetLinkedData(key)=>self.get_linked_data(key),
-            Command::OverwriteData(key,data)=>self.overwrite_data(key,data),
-            Command::OverwriteLink(key,linked_keys,link_type)=>self.overwrite_link(key,linked_keys,link_type),
-            Command::GetLinkedKeys(key)=>self.get_linked_keys(key),
-            Command::GetAllKeys=>self.get_all_keys(),
-            Command::IterLinkType(l)=>self.iter_link_type(l),
-            Command::MakeBacked(s)=>self.make_backed(s),
+    fn process_task(
+        &mut self,
+        command: Command<Key, DataType, LinkType>,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match command {
+            Command::Quit => CommandResult::Quit,
+            Command::Insert(key, data) => self.insert(key, data),
+            Command::GetKeys(key) => self.get(key),
+            Command::GetAllData => self.getData(),
+            Command::GetLinkTypeNOT_USED(_link) => CommandResult::InsertOk,
+            Command::GetContains(key) => self.getContains(key),
+            Command::InsertLink(key, children, link_type) => {
+                self.insert_link(key, children, link_type)
+            }
+            Command::GetLinkedData(key) => self.get_linked_data(key),
+            Command::OverwriteData(key, data) => self.overwrite_data(key, data),
+            Command::OverwriteLink(key, linked_keys, link_type) => {
+                self.overwrite_link(key, linked_keys, link_type)
+            }
+            Command::GetLinkedKeys(key) => self.get_linked_keys(key),
+            Command::GetAllKeys => self.get_all_keys(),
+            Command::IterLinkType(l) => self.iter_link_type(l),
+            Command::MakeBacked(s) => self.make_backed(s),
         }
     }
-    fn make_backed(&mut self,backing:String)->CommandResult<Key,DataType,LinkType>{
+    fn make_backed(&mut self, backing: String) -> CommandResult<Key, DataType, LinkType> {
         let r = self.db.make_backed(&backing);
-        match r{
-            Ok(_)=>CommandResult::InsertOk,
-            Err(e)=>CommandResult::Error(e),
-            _ =>CommandResult::Error(errors::DBOperationError::Other)
+        match r {
+            Ok(_) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
+            _ => CommandResult::Error(errors::DBOperationError::Other),
         }
     }
-    fn iter_link_type(&mut self,link:LinkType)->CommandResult<Key,DataType,LinkType>{
-        
-        CommandResult::IterLinkType(self.db.iter_link_type(&link).map(|(k,v)|{(k,v.clone())}).collect::<Vec<(Key,Vec<Key>)>>().clone())
+    fn iter_link_type(&mut self, link: LinkType) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::IterLinkType(
+            self.db
+                .iter_link_type(&link)
+                .map(|(k, v)| (k, v.clone()))
+                .collect::<Vec<(Key, Vec<Key>)>>()
+                .clone(),
+        )
     }
-    fn get_all_keys(&mut self)->CommandResult<Key,DataType,LinkType>{
+    fn get_all_keys(&mut self) -> CommandResult<Key, DataType, LinkType> {
         CommandResult::GetAllKeys(self.db.get_keys())
-
     }
-    fn get_linked_keys(&mut self,key:Key)->CommandResult<Key,DataType,LinkType>{
-        match self.db.get_links(&key){
-            Ok(data)=>CommandResult::GetLinkedKeys(data.clone()),
-            Err(e)=>CommandResult::Error(e)
+    fn get_linked_keys(&mut self, key: Key) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.get_links(&key) {
+            Ok(data) => CommandResult::GetLinkedKeys(data.clone()),
+            Err(e) => CommandResult::Error(e),
         }
     }
-    fn overwrite_link(&mut self,key:Key,linked_keys:Vec<Key>,link_type:LinkType)->CommandResult<Key,DataType,LinkType>{
-        match self.db.overwrite_link(&key, &linked_keys, link_type){
-            Ok(_)=>CommandResult::InsertOk,
-            Err(e)=>CommandResult::Error(e)
+    fn overwrite_link(
+        &mut self,
+        key: Key,
+        linked_keys: Vec<Key>,
+        link_type: LinkType,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.overwrite_link(&key, &linked_keys, link_type) {
+            Ok(_) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
         }
     }
-    fn overwrite_data(&mut self,key:Key,data:DataType)->CommandResult<Key,DataType,LinkType>{
-        match self.db.set_data(&key, &data){
-            Ok(_i)=>CommandResult::InsertOk,
-            Err(e)=>CommandResult::Error(e)
+    fn overwrite_data(
+        &mut self,
+        key: Key,
+        data: DataType,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.set_data(&key, &data) {
+            Ok(_i) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
         }
     }
-    fn get_linked_data(&self,key:Key)->CommandResult<Key,DataType,LinkType>{
+    fn get_linked_data(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
         let data = self.db.get_links(&key);
-        if data.is_ok(){
-            let d = data.ok().unwrap().iter().map(|temp_key|{(temp_key.clone(),self.db.get(&temp_key).ok().unwrap().clone())}).collect();
+        if data.is_ok() {
+            let d = data
+                .ok()
+                .unwrap()
+                .iter()
+                .map(|temp_key| {
+                    (
+                        temp_key.clone(),
+                        self.db.get(&temp_key).ok().unwrap().clone(),
+                    )
+                })
+                .collect();
             CommandResult::GetLinkedData(d)
-        }else{
-            return CommandResult::Error(errors::DBOperationError::Other)
-        }
-        
-    }
-    fn insert_link(&mut self,key:Key,children:Vec<Key>,link_type:LinkType)->CommandResult<Key,DataType,LinkType>{
-        match self.db.insert_link(&key, &children, link_type){
-            Ok(data)=>CommandResult::InsertOk,
-            Err(data)=>CommandResult::Error(data)
+        } else {
+            return CommandResult::Error(errors::DBOperationError::Other);
         }
     }
-    fn getData(&self)->CommandResult<Key,DataType,LinkType>{
-        CommandResult::ReturnAllData(self.db.iter_data().map(|(a,b)|{
-            (a.clone(),b.clone())}
-        ).collect())
+    fn insert_link(
+        &mut self,
+        key: Key,
+        children: Vec<Key>,
+        link_type: LinkType,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.insert_link(&key, &children, link_type) {
+            Ok(data) => CommandResult::InsertOk,
+            Err(data) => CommandResult::Error(data),
+        }
     }
-    fn getContains(&self,key:Key)->CommandResult<Key,DataType,LinkType>{
+    fn getData(&self) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::ReturnAllData(
+            self.db
+                .iter_data()
+                .map(|(a, b)| (a.clone(), b.clone()))
+                .collect(),
+        )
+    }
+    fn getContains(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
         CommandResult::Contains(self.db.contains(&key))
     }
-    fn make_controller_thread<Args:'static + std::marker::Send>(
+    fn make_controller_thread<Args: 'static + std::marker::Send>(
         s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
-        args:Args
+        args: Args,
     ) -> ServiceClient<Key, DataType, LinkType> {
         let (send, recieve) = channel();
         std::thread::spawn(move || {
@@ -479,19 +529,19 @@ impl<
         return client;
     }
     /// Inserts into database
-    fn insert(&mut self,key:Key,data:DataType)->CommandResult<Key,DataType,LinkType>{
+    fn insert(&mut self, key: Key, data: DataType) -> CommandResult<Key, DataType, LinkType> {
         let res = self.db.insert(&key, data);
-        if res.is_ok(){
-            return CommandResult::InsertOk
-        }else{
+        if res.is_ok() {
+            return CommandResult::InsertOk;
+        } else {
             return CommandResult::Error(res.err().unwrap());
         }
     }
-    fn get(&mut self,key:Key)->CommandResult<Key,DataType,LinkType>{
+    fn get(&mut self, key: Key) -> CommandResult<Key, DataType, LinkType> {
         let res = self.db.get(&key);
-        if res.is_ok(){
-            return CommandResult::Get(res.ok().unwrap().clone())
-        }else{
+        if res.is_ok() {
+            return CommandResult::Get(res.ok().unwrap().clone());
+        } else {
             return CommandResult::Error(res.err().unwrap());
         }
     }
@@ -533,14 +583,13 @@ mod test {
         });
         db.send_command_result(CommandResult::InsertOk);
         thread::sleep(time::Duration::from_millis(10));
-        
         #[allow(unused_must_use)]
         let _r = t.join();
         assert_eq!(db.get_command().unwrap(), Command::GetKeys(0));
     }
     #[test]
-    fn quit_service_controller(){
-        let mut c = ServiceController::<u32,u32,u32>::empty();
+    fn quit_service_controller() {
+        let mut c = ServiceController::<u32, u32, u32>::empty();
         use std::{thread, time};
         thread::sleep(time::Duration::from_millis(10));
         c.quit();
@@ -555,5 +604,22 @@ mod test {
         let r = c.get(1);
         assert_eq!(r.ok().unwrap(), 1);
         c.quit();
+    }
+    #[test]
+    fn backed() {
+        let db_path = "ds.json".to_string();
+        std::fs::remove_file(db_path.clone());
+        {
+            let mut ds = ServiceController::<u32, u32, u32>::empty();
+            ds.insert(1, 1);
+            ds.make_backed(db_path.clone());
+            ds.quit();
+        }
+        let mut ds2 = ServiceController::<u32, u32, u32>::backed(db_path)
+            .ok()
+            .unwrap();
+        let r = ds2.get(1);
+        assert!(r.is_ok());
+        assert_eq!(ds2.get(1).ok().unwrap(), 1);
     }
 }
