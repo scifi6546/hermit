@@ -15,6 +15,7 @@ pub enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: 
     GetAllKeys,
     IterLinkType(LinkType),
     MakeBacked(String),
+    GetLen,
     //Used to send Quit service to database
     Quit,
 }
@@ -33,6 +34,7 @@ pub enum CommandResult<
     GetLinkedKeys(Vec<Key>),
     GetAllKeys(Vec<Key>),
     IterLinkType(Vec<(Key,Vec<Key>)>),
+    GetLen(usize),
     /// ************************************************************************
     ///  ***********************************************************************
     ///  ***********************************************************************

@@ -260,6 +260,7 @@ impl<
     ) -> Result<(), errors::DBOperationError> {
         Err(errors::DBOperationError::NodeNotLink)
     }
+
     pub fn right_join(
         &self,
         right: &DataStructure<Key, DataType, LinkType>,
@@ -306,12 +307,16 @@ impl<
     /// Gets number of elements in db
     /// ```
     /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
-    /// assert_eq!(ds.len(),0);
+    /// assert_eq!(ds.len().ok().unwrap(),0);
     /// ds.insert(20,20);
-    /// assert_eq!(ds.len(),1);
+    /// assert_eq!(ds.len().ok().unwrap(),1);
     /// ```
-    pub fn len(&self) -> usize {
-        0
+    pub fn len(&mut self) -> Result<usize,errors::DBOperationError> {
+        match self.send_command(Command::GetLen){
+            CommandResult::GetLen(l)=>Ok(l),
+            CommandResult::Error(e)=>Err(e),
+            _ =>Err(errors::DBOperationError::Other),
+        }
     }
 }
 ///Holds Database and Access to Services
@@ -421,7 +426,11 @@ impl<
             Command::GetAllKeys => self.get_all_keys(),
             Command::IterLinkType(l) => self.iter_link_type(l),
             Command::MakeBacked(s) => self.make_backed(s),
+            Command::GetLen=>self.get_len(),
         }
+    }
+    fn get_len(&self)->CommandResult<Key, DataType, LinkType>{
+        CommandResult::GetLen(self.db.len())
     }
     fn make_backed(&mut self, backing: String) -> CommandResult<Key, DataType, LinkType> {
         let r = self.db.make_backed(&backing);
