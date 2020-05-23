@@ -1,5 +1,5 @@
 use argon2::{self, Config};
-use gulkana::DataStructure;
+use gulkana::{ServiceController,ServiceClient};
 use serde::Serialize;
 #[derive(Clone, Serialize)]
 pub struct User {
@@ -14,10 +14,9 @@ pub enum UserCategories {
     Admin,
     RegularUser,
 }
-#[derive(Clone)]
 pub struct UserVec {
     //key is username
-    pub _users: DataStructure<Username, User, UserCategories>,
+    pub _users: ServiceClient<Username, User, UserCategories>,
     //_users:Vec<User>
 }
 #[derive(Clone)]
@@ -27,7 +26,7 @@ pub struct UserConf {
 }
 impl UserVec {
     pub fn add_user(&mut self, username: String, password: String) -> Result<String, String> {
-        for (username_temp, _user) in self._users.iter_data() {
+        for (username_temp, _user) in self._users.iter_data()? {
             if &username == username_temp {
                 return Err("user already exists".to_string());
             }
@@ -172,7 +171,7 @@ impl UserVec {
         }
         return vec_out;
     }
-    pub fn iter(&self) -> gulkana::DataNodeIter<'_, std::string::String, User, UserCategories> {
+    pub fn iter(&self) -> gulkana::DataIter<std::string::String, User, UserCategories> {
         return self._users.iter_data();
     }
 }
