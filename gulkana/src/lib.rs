@@ -482,6 +482,17 @@ impl<
         return write!(f, "");
     }
 }
+impl<
+K: std::cmp::Ord + std::fmt::Display + std::clone::Clone + Serialize,
+D: std::clone::Clone + Serialize,
+I: std::clone::Clone + Serialize,
+>  std::fmt::Debug for DataStructure<K,D,I>{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JoinFn")
+        .field("data", &format!("{}",self))
+         .finish()
+    }
+}
 pub enum ReadError {
     ParseError,
 }

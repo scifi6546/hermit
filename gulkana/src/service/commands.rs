@@ -1,25 +1,26 @@
 use crate::errors;
 use crate::service::ServiceClient;
-struct JoinFn<
-Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-DataType: std::marker::Sync + std::marker::Send,
-LinkType: std::marker::Sync + std::marker::Send,
+use serde::Serialize;
+pub struct JoinFn<
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
+DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 > {
-    f:fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>
+    pub function:fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>
 }
 impl<
-Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-DataType: std::marker::Sync + std::marker::Send,
-LinkType: std::marker::Sync + std::marker::Send,
->  PartialEq for JoinFn<Key,DataType,LinkType>{
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
+DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+>   PartialEq for JoinFn<Key,DataType,LinkType>{
     fn eq(&self,other:&Self)->bool{
         false
     }
 }
 impl<
-Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-DataType: std::marker::Sync + std::marker::Send,
-LinkType: std::marker::Sync + std::marker::Send,
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
+DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 > std::fmt::Debug for JoinFn<Key,DataType,LinkType>{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JoinFn")
@@ -28,7 +29,11 @@ LinkType: std::marker::Sync + std::marker::Send,
 }
 /// Used to send commands in between the Client and Master databases
 #[derive( std::cmp::PartialEq,std::fmt::Debug)]
-pub enum Command<Key: std::marker::Send+std::marker::Sync+std::cmp::PartialEq, DataType: std::marker::Send+std::marker::Sync, LinkType: std::marker::Send+std::marker::Sync> {
+pub enum Command<
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
+DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+>  {
     GetKeys(Key),
     Insert(Key, DataType),
     GetLinkTypeNOT_USED(LinkType),
@@ -44,13 +49,14 @@ pub enum Command<Key: std::marker::Send+std::marker::Sync+std::cmp::PartialEq, D
     MakeBacked(String),
     GetLen,
     RightJoin(JoinFn<Key,DataType,LinkType>),
+    GetDB,
     //Used to send Quit service to database
     Quit,
 }
 pub enum CommandResult<
-    Key: std::marker::Sync + std::marker::Send,
-    DataType: std::marker::Sync + std::marker::Send,
-    LinkType: std::marker::Sync + std::marker::Send,
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
+DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
+LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 > {
     InsertOk,
     Get(DataType),
@@ -63,7 +69,7 @@ pub enum CommandResult<
     GetAllKeys(Vec<Key>),
     IterLinkType(Vec<(Key,Vec<Key>)>),
     GetLen(usize),
-
+    GetDB(crate::DataStructure<Key,DataType,LinkType>),
     /// ************************************************************************
     ///  ***********************************************************************
     ///  ***********************************************************************

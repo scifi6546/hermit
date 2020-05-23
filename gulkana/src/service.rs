@@ -9,17 +9,29 @@ mod commands;
 use commands::*;
 ///Service for use Database Side
 pub struct ServiceDB<
-    Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-    DataType: std::marker::Sync + std::marker::Send,
-    LinkType: std::marker::Sync + std::marker::Send,
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
     send_result: Sender<CommandResult<Key, DataType, LinkType>>,
     recieve_commands: Receiver<Command<Key, DataType, LinkType>>,
 }
 impl<
-        Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-        DataType: std::marker::Sync + std::marker::Send,
-        LinkType: std::marker::Sync + std::marker::Send,
+        Key: std::marker::Sync
+            + std::marker::Send
+            + std::cmp::PartialEq
+            + std::clone::Clone
+            + Serialize
+            + std::cmp::Ord
+            + std::fmt::Display,
+        DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+        LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
     > ServiceDB<Key, DataType, LinkType>
 {
     fn get_command(&mut self) -> Option<Command<Key, DataType, LinkType>> {
@@ -36,17 +48,29 @@ impl<
 }
 ///Service used on Client Side
 pub struct ServiceClient<
-    Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-    DataType: std::marker::Sync + std::marker::Send,
-    LinkType: std::marker::Sync + std::marker::Send,
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
     send_commands: Sender<Command<Key, DataType, LinkType>>,
     recieve_result: Receiver<CommandResult<Key, DataType, LinkType>>,
 }
 impl<
-        Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-        DataType: std::marker::Sync + std::marker::Send,
-        LinkType: std::marker::Sync + std::marker::Send,
+        Key: std::marker::Sync
+            + std::marker::Send
+            + std::cmp::PartialEq
+            + Serialize
+            + std::cmp::Ord
+            + std::clone::Clone
+            + std::fmt::Display,
+        DataType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
+        LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
     > ServiceClient<Key, DataType, LinkType>
 {
     fn send_command(
@@ -260,20 +284,30 @@ impl<
     ) -> Result<(), errors::DBOperationError> {
         Err(errors::DBOperationError::NodeNotLink)
     }
-    /// Have Not figured out a good interface
+    /// Takes a functin that constructs Database and performs join with current database.
     /// ```
-    /// assert!(1==0);
+    /// let mut dsr = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// dsr.right_join(|c|{
+    ///     c.insert(0,0)
+    /// });
+    /// assert_eq!(dsr.get(0).ok().unwrap(),0);
     /// ```
     pub fn right_join(
-        &self,
-        right: fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>,
-    ) -> Result<DataStructure<Key, DataType, LinkType>, errors::DBOperationError>
+        &mut self,
+        right: fn(
+            &mut ServiceClient<Key, DataType, LinkType>,
+        ) -> Result<(), errors::DBOperationError>,
+    ) -> Result<(), errors::DBOperationError>
     where
         Key: std::clone::Clone + std::cmp::Ord + Serialize,
         DataType: std::clone::Clone + Serialize,
         LinkType: std::clone::Clone + Serialize,
     {
-        Err(errors::DBOperationError::NodeNotLink)
+        match self.send_command(Command::RightJoin(JoinFn { function: right })) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
     }
     ///
     /// ```
@@ -314,17 +348,33 @@ impl<
     /// ds.insert(20,20);
     /// assert_eq!(ds.len().ok().unwrap(),1);
     /// ```
-    pub fn len(&mut self) -> Result<usize,errors::DBOperationError> {
-        match self.send_command(Command::GetLen){
-            CommandResult::GetLen(l)=>Ok(l),
-            CommandResult::Error(e)=>Err(e),
-            _ =>Err(errors::DBOperationError::Other),
+    pub fn len(&mut self) -> Result<usize, errors::DBOperationError> {
+        match self.send_command(Command::GetLen) {
+            CommandResult::GetLen(l) => Ok(l),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
+    }
+    /// Extracts Database Only to be used by internals
+    fn extract_db(
+        &mut self,
+    ) -> Result<crate::DataStructure<Key, DataType, LinkType>, errors::DBOperationError> {
+        match self.send_command(Command::GetDB) {
+            CommandResult::GetDB(db) => Ok(db),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
-    Key: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize + std::cmp::Ord,
+    Key: 'static
+        + std::marker::Sync
+        + std::marker::Send
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
     DataType: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
     LinkType: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
@@ -338,7 +388,8 @@ impl<
             + std::clone::Clone
             + Serialize
             + std::cmp::Ord
-            + DeserializeOwned,
+            + DeserializeOwned
+            + std::fmt::Display,
         DataType: 'static
             + std::marker::Sync
             + std::marker::Send
@@ -429,10 +480,40 @@ impl<
             Command::GetAllKeys => self.get_all_keys(),
             Command::IterLinkType(l) => self.iter_link_type(l),
             Command::MakeBacked(s) => self.make_backed(s),
-            Command::GetLen=>self.get_len(),
+            Command::GetLen => self.get_len(),
+            Command::RightJoin(f) => self.right_join(f),
+            Command::GetDB => self.get_db(),
         }
     }
-    fn get_len(&self)->CommandResult<Key, DataType, LinkType>{
+    fn get_db(&self) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::GetDB(self.db.clone())
+    }
+    fn right_join(
+        &mut self,
+        f: JoinFn<Key, DataType, LinkType>,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        let mut s = ServiceController::<Key, DataType, LinkType>::empty();
+        let function = f.function;
+        let service_res = function(&mut s);
+        if service_res.is_ok() {
+            let db_res = s.extract_db();
+            if db_res.is_ok() {
+                let r = self.db.right_join(&db_res.ok().unwrap());
+                match r {
+                    Ok(r) => {
+                        self.db=r;
+                        CommandResult::InsertOk
+                    },
+                    Err(e) => CommandResult::Error(e),
+                }
+            } else {
+                CommandResult::Error(db_res.err().unwrap())
+            }
+        } else {
+            CommandResult::Error(service_res.err().unwrap())
+        }
+    }
+    fn get_len(&self) -> CommandResult<Key, DataType, LinkType> {
         CommandResult::GetLen(self.db.len())
     }
     fn make_backed(&mut self, backing: String) -> CommandResult<Key, DataType, LinkType> {
@@ -559,9 +640,15 @@ impl<
     }
 }
 fn new_client<
-    Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
-    DataType: std::marker::Sync + std::marker::Send,
-    LinkType: std::marker::Sync + std::marker::Send,
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + Serialize
+        + std::clone::Clone
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
+    LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
 >() -> (
     ServiceDB<Key, DataType, LinkType>,
     ServiceClient<Key, DataType, LinkType>,
@@ -633,5 +720,25 @@ mod test {
         let r = ds2.get(1);
         assert!(r.is_ok());
         assert_eq!(ds2.get(1).ok().unwrap(), 1);
+    }
+    #[test]
+    fn join() {
+        type Label = u32;
+        let mut dsr = ServiceController::<u32, u32, Label>::empty();
+        dsr.insert(0, 0);
+        dsr.insert(1, 1);
+        dsr.insert(2, 2);
+        dsr.right_join(|c| {
+            c.insert(0, 0);
+            c.insert(1, 1);
+            c.insert(2, 2);
+            Ok(())
+        });
+        assert_eq!(dsr.get(0).ok().unwrap(), 0);
+        assert_eq!(dsr.get(1).ok().unwrap(), 1);
+        assert_eq!(dsr.get(2).ok().unwrap(), 2);
+        assert!(dsr.right_join(|c| { c.insert(4, 4) }).is_ok());
+        assert_eq!(dsr.get(4).ok().unwrap(), 4);
+        assert!(dsr.get(1).is_err());
     }
 }
