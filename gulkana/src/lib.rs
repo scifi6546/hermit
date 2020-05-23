@@ -9,6 +9,7 @@ mod iterators;
 use iterators::*;
 mod commands;
 use commands::*;
+pub use iterators::DataIter;
 ///Service for use Database Side
 pub struct ServiceDB<
     Key: std::marker::Sync

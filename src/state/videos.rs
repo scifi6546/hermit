@@ -390,7 +390,7 @@ pub fn new(
     num_recurse: u32,
 ) -> Result<VideoDB, String> {
     info!("creating backed datastructure");
-    let make_db_res = gulkana::backed_datastructure(&database_path);
+    let make_db_res = gulkana::ServiceController::backed(database_path);
 
     if make_db_res.is_ok() {
         info!("made backed datastructure at path: {}", database_path);
@@ -524,7 +524,7 @@ pub fn from_legacy(
 }
 pub fn empty() -> VideoDB {
     return VideoDB {
-        database: gulkana::new_datastructure(),
+        database: gulkana::ServiceController::empty(),
         database_path: None,
         thumb_dir: "".to_string(),
         thumb_res: 0,
