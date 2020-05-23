@@ -50,6 +50,7 @@ LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
     GetLen,
     RightJoin(JoinFn<Key,DataType,LinkType>),
     GetDB,
+    AppendLink(Key,Key),
     //Used to send Quit service to database
     Quit,
 }

@@ -282,7 +282,11 @@ impl<
         key: Key,
         key_append: Key,
     ) -> Result<(), errors::DBOperationError> {
-        Err(errors::DBOperationError::NodeNotLink)
+        match self.send_command(Command::AppendLink(key,key_append)){
+            CommandResult::InsertOk=>Ok(()),
+            CommandResult::Error(e)=>Err(e),
+            _ =>Err(errors::DBOperationError::Other)
+        }
     }
     /// Takes a functin that constructs Database and performs join with current database.
     /// ```
@@ -483,6 +487,13 @@ impl<
             Command::GetLen => self.get_len(),
             Command::RightJoin(f) => self.right_join(f),
             Command::GetDB => self.get_db(),
+            Command::AppendLink(key,append)=>self.append_link(key,append)
+        }
+    }
+    fn append_link(&mut self,key:Key,append:Key)->CommandResult<Key, DataType, LinkType>{
+        match self.db.append_links(&key, &append){
+            Ok(a)=>CommandResult::InsertOk,
+            Err(e)=>CommandResult::Error(e)
         }
     }
     fn get_db(&self) -> CommandResult<Key, DataType, LinkType> {
