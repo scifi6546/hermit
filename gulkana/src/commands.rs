@@ -1,5 +1,5 @@
 use crate::errors;
-use crate::service::ServiceClient;
+use crate::ServiceClient;
 use serde::Serialize;
 pub struct JoinFn<
 Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,

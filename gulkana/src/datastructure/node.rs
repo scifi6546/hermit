@@ -1,5 +1,6 @@
 use crate::errors::*;
-use crate::opt_pair::*;
+mod opt_pair;
+use opt_pair::*;
 use serde::{Deserialize, Serialize};
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Link<Key: std::clone::Clone, TypeLabel: std::clone::Clone> {
