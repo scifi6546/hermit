@@ -13,7 +13,7 @@ Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone
 DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 >   PartialEq for JoinFn<Key,DataType,LinkType>{
-    fn eq(&self,other:&Self)->bool{
+    fn eq(&self,_:&Self)->bool{
         false
     }
 }
@@ -36,7 +36,6 @@ LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 >  {
     GetKeys(Key),
     Insert(Key, DataType),
-    GetLinkTypeNOT_USED(LinkType),
     GetAllData,
     GetContains(Key),
     InsertLink(Key,Vec<Key>,LinkType),
@@ -71,13 +70,4 @@ LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
     IterLinkType(Vec<(Key,Vec<Key>)>),
     GetLen(usize),
     GetDB(crate::DataStructure<Key,DataType,LinkType>),
-    /// ************************************************************************
-    ///  ***********************************************************************
-    ///  ***********************************************************************
-    /// FIX NOW!!!!!!!
-    /// ************************************************************************
-    /// ************************************************************************
-    /// ************************************************************************
-    /// ************************************************************************
-    MakeCompillerHappy(Key,DataType,LinkType)
 }

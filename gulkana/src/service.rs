@@ -42,6 +42,7 @@ impl<
             None
         }
     }
+    #[allow(unused_must_use)]
     fn send_command_result(&mut self, res: CommandResult<Key, DataType, LinkType>) {
         self.send_result.send(res);
     }
@@ -73,6 +74,7 @@ impl<
         LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
     > ServiceClient<Key, DataType, LinkType>
 {
+    #[allow(unused_must_use)]
     fn send_command(
         &mut self,
         command: Command<Key, DataType, LinkType>,
@@ -434,6 +436,7 @@ impl<
             let mut quit = false;
             let mut command_vec = vec![];
             command_vec.reserve(self.service.len());
+            #[allow(unused_mut)]
             for mut service in &mut self.service {
                 command_vec.push(service.get_command());
             }
@@ -469,9 +472,8 @@ impl<
             Command::Quit => CommandResult::Quit,
             Command::Insert(key, data) => self.insert(key, data),
             Command::GetKeys(key) => self.get(key),
-            Command::GetAllData => self.getData(),
-            Command::GetLinkTypeNOT_USED(_link) => CommandResult::InsertOk,
-            Command::GetContains(key) => self.getContains(key),
+            Command::GetAllData => self.get_data(),
+            Command::GetContains(key) => self.get_contains(key),
             Command::InsertLink(key, children, link_type) => {
                 self.insert_link(key, children, link_type)
             }
@@ -492,7 +494,7 @@ impl<
     }
     fn append_link(&mut self,key:Key,append:Key)->CommandResult<Key, DataType, LinkType>{
         match self.db.append_links(&key, &append){
-            Ok(a)=>CommandResult::InsertOk,
+            Ok(_)=>CommandResult::InsertOk,
             Err(e)=>CommandResult::Error(e)
         }
     }
@@ -532,7 +534,6 @@ impl<
         match r {
             Ok(_) => CommandResult::InsertOk,
             Err(e) => CommandResult::Error(e),
-            _ => CommandResult::Error(errors::DBOperationError::Other),
         }
     }
     fn iter_link_type(&mut self, link: LinkType) -> CommandResult<Key, DataType, LinkType> {
@@ -600,11 +601,11 @@ impl<
         link_type: LinkType,
     ) -> CommandResult<Key, DataType, LinkType> {
         match self.db.insert_link(&key, &children, link_type) {
-            Ok(data) => CommandResult::InsertOk,
+            Ok(_) => CommandResult::InsertOk,
             Err(data) => CommandResult::Error(data),
         }
     }
-    fn getData(&self) -> CommandResult<Key, DataType, LinkType> {
+    fn get_data(&self) -> CommandResult<Key, DataType, LinkType> {
         CommandResult::ReturnAllData(
             self.db
                 .iter_data()
@@ -612,7 +613,7 @@ impl<
                 .collect(),
         )
     }
-    fn getContains(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
+    fn get_contains(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
         CommandResult::Contains(self.db.contains(&key))
     }
     fn make_controller_thread<Args: 'static + std::marker::Send>(
@@ -620,6 +621,7 @@ impl<
         args: Args,
     ) -> ServiceClient<Key, DataType, LinkType> {
         let (send, recieve) = channel();
+        #[allow(unused_must_use)]
         std::thread::spawn(move || {
             let mut controller = s(args);
             send.send(controller.add_service());
@@ -705,6 +707,7 @@ mod test {
         c.quit();
     }
     #[test]
+    #[allow(unused_must_use)]
     fn insert_and_get() {
         let mut c = ServiceController::<u32, u32, u32>::empty();
         c.insert(0, 0);
@@ -716,6 +719,7 @@ mod test {
         c.quit();
     }
     #[test]
+    #[allow(unused_must_use)]
     fn backed() {
         let db_path = "ds.json".to_string();
         std::fs::remove_file(db_path.clone());
@@ -733,6 +737,7 @@ mod test {
         assert_eq!(ds2.get(1).ok().unwrap(), 1);
     }
     #[test]
+    #[allow(unused_must_use)]
     fn join() {
         type Label = u32;
         let mut dsr = ServiceController::<u32, u32, Label>::empty();
