@@ -288,8 +288,8 @@ impl<
     }
     /// gets key from database
     /// ```
-    ///
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
+    /// 
+    /// let mut ds = gulkana::datastructure::new_datastructure::<u32,u32,u32>();
     /// ds.insert(&10,5);
     /// let data = ds.get(&10);
     /// assert!(*data.ok().unwrap()==5);
@@ -315,7 +315,7 @@ impl<
     }
     /// Gets linked nodes
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
+    /// let mut ds = gulkana::datastructure::new_datastructure::<u32,u32,u32>();
     /// ds.insert(&10,5);
     /// ds.insert(&11,6);
     /// ds.insert_link(&9,&vec![10],0);
