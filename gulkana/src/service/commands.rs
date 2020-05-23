@@ -1,7 +1,34 @@
 use crate::errors;
+use crate::service::ServiceClient;
+struct JoinFn<
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
+DataType: std::marker::Sync + std::marker::Send,
+LinkType: std::marker::Sync + std::marker::Send,
+> {
+    f:fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>
+}
+impl<
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
+DataType: std::marker::Sync + std::marker::Send,
+LinkType: std::marker::Sync + std::marker::Send,
+>  PartialEq for JoinFn<Key,DataType,LinkType>{
+    fn eq(&self,other:&Self)->bool{
+        false
+    }
+}
+impl<
+Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
+DataType: std::marker::Sync + std::marker::Send,
+LinkType: std::marker::Sync + std::marker::Send,
+> std::fmt::Debug for JoinFn<Key,DataType,LinkType>{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JoinFn")
+         .finish()
+    }
+}
 /// Used to send commands in between the Client and Master databases
-#[derive(std::fmt::Debug, std::cmp::PartialEq)]
-pub enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: std::marker::Send> {
+#[derive( std::cmp::PartialEq,std::fmt::Debug)]
+pub enum Command<Key: std::marker::Send+std::marker::Sync+std::cmp::PartialEq, DataType: std::marker::Send+std::marker::Sync, LinkType: std::marker::Send+std::marker::Sync> {
     GetKeys(Key),
     Insert(Key, DataType),
     GetLinkTypeNOT_USED(LinkType),
@@ -16,6 +43,7 @@ pub enum Command<Key: std::marker::Send, DataType: std::marker::Send, LinkType: 
     IterLinkType(LinkType),
     MakeBacked(String),
     GetLen,
+    RightJoin(JoinFn<Key,DataType,LinkType>),
     //Used to send Quit service to database
     Quit,
 }
@@ -35,6 +63,7 @@ pub enum CommandResult<
     GetAllKeys(Vec<Key>),
     IterLinkType(Vec<(Key,Vec<Key>)>),
     GetLen(usize),
+
     /// ************************************************************************
     ///  ***********************************************************************
     ///  ***********************************************************************

@@ -9,7 +9,7 @@ mod commands;
 use commands::*;
 ///Service for use Database Side
 pub struct ServiceDB<
-    Key: std::marker::Sync + std::marker::Send,
+    Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
     DataType: std::marker::Sync + std::marker::Send,
     LinkType: std::marker::Sync + std::marker::Send,
 > {
@@ -17,7 +17,7 @@ pub struct ServiceDB<
     recieve_commands: Receiver<Command<Key, DataType, LinkType>>,
 }
 impl<
-        Key: std::marker::Sync + std::marker::Send,
+        Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
         DataType: std::marker::Sync + std::marker::Send,
         LinkType: std::marker::Sync + std::marker::Send,
     > ServiceDB<Key, DataType, LinkType>
@@ -36,7 +36,7 @@ impl<
 }
 ///Service used on Client Side
 pub struct ServiceClient<
-    Key: std::marker::Sync + std::marker::Send,
+    Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
     DataType: std::marker::Sync + std::marker::Send,
     LinkType: std::marker::Sync + std::marker::Send,
 > {
@@ -44,7 +44,7 @@ pub struct ServiceClient<
     recieve_result: Receiver<CommandResult<Key, DataType, LinkType>>,
 }
 impl<
-        Key: std::marker::Sync + std::marker::Send,
+        Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
         DataType: std::marker::Sync + std::marker::Send,
         LinkType: std::marker::Sync + std::marker::Send,
     > ServiceClient<Key, DataType, LinkType>
@@ -260,10 +260,13 @@ impl<
     ) -> Result<(), errors::DBOperationError> {
         Err(errors::DBOperationError::NodeNotLink)
     }
-
+    /// Have Not figured out a good interface
+    /// ```
+    /// assert!(1==0);
+    /// ```
     pub fn right_join(
         &self,
-        right: &DataStructure<Key, DataType, LinkType>,
+        right: fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>,
     ) -> Result<DataStructure<Key, DataType, LinkType>, errors::DBOperationError>
     where
         Key: std::clone::Clone + std::cmp::Ord + Serialize,
@@ -556,7 +559,7 @@ impl<
     }
 }
 fn new_client<
-    Key: std::marker::Sync + std::marker::Send,
+    Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq,
     DataType: std::marker::Sync + std::marker::Send,
     LinkType: std::marker::Sync + std::marker::Send,
 >() -> (
