@@ -352,10 +352,12 @@ impl VideoDB {
                 self.thumb_dir.clone(),
                 self.database_path.clone().unwrap(),
                 self.thumb_res,
+                
             );
+            
             if db_res.is_ok() {
                 let db = db_res.ok().unwrap();
-                let join_res = self.database.right_join(db.database);
+                let join_res = self.database.right_join(Box::new(|c|{db_from_dir(source.unwrap(), self.thumb_dir.clone(), c}));
 
                 if join_res.is_ok() {
                     let res = self.database.make_backed(db_path.unwrap());
@@ -460,7 +462,8 @@ fn db_from_dir(
     _thumb_dir: String,
     _database_path: String,
     _thumb_res: u32,
-) -> Result<VideoDB, String> {
+    service_db: &mut gulkana::ServiceClient<String, FileData, DirectoryTypes>
+) {
     info!("making database from directory: {}", read_dir);
     let dir_iter_res = Path::new(&read_dir).read_dir();
     if dir_iter_res.is_ok() {
@@ -486,16 +489,11 @@ fn db_from_dir(
                     metadata: new_metadata(),
                 };
                 vid.gen_file_type();
-                db.add_video(file_path, vid)?;
+                service_db.set_data(file_path, vid);
             } else {
                 error!("file in directory invalid");
             }
         }
-
-        return Ok(db);
-    } else {
-        error!("path: {} not directory", read_dir);
-        return Err("path not directory".to_string());
     }
 }
 pub fn from_legacy(

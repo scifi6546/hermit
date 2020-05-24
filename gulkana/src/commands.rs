@@ -1,12 +1,13 @@
 use crate::errors;
 use crate::ServiceClient;
 use serde::Serialize;
+
 pub struct JoinFn<
 Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
 DataType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
 > {
-    pub function:fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>
+    pub function:Box<dyn Fn(&mut ServiceClient<Key,DataType,LinkType>)->Result<(),errors::DBOperationError>>,
 }
 impl<
 Key: std::marker::Sync + std::marker::Send+std::cmp::PartialEq+std::clone::Clone+Serialize+std::cmp::Ord+std::fmt::Display,
@@ -26,6 +27,9 @@ LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
         f.debug_struct("JoinFn")
          .finish()
     }
+}
+pub trait Argument{
+
 }
 /// Used to send commands in between the Client and Master databases
 #[derive( std::cmp::PartialEq,std::fmt::Debug)]
@@ -47,7 +51,7 @@ LinkType: std::marker::Sync + std::marker::Send+std::clone::Clone+Serialize,
     IterLinkType(LinkType),
     MakeBacked(String),
     GetLen,
-    RightJoin(JoinFn<Key,DataType,LinkType>),
+    RightJoin(crate::datastructure::DataStructure<Key,DataType,LinkType>),
     GetDB,
     AppendLink(Key,Key),
     //Used to send Quit service to database

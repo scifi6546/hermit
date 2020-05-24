@@ -1,7 +1,7 @@
 mod errors;
 use errors::*;
 mod datastructure;
-use datastructure::{backed_datastructure,new_datastructure,DataStructure};
+use datastructure::{backed_datastructure, new_datastructure, DataStructure};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -72,9 +72,9 @@ impl<
             + Serialize
             + std::cmp::Ord
             + std::clone::Clone
-            + std::fmt::Display,
-        DataType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
-        LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
+            + std::fmt::Display+DeserializeOwned,
+        DataType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone+DeserializeOwned,
+        LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone+DeserializeOwned+std::cmp::PartialEq,
     > ServiceClient<Key, DataType, LinkType>
 {
     #[allow(unused_must_use)]
@@ -287,10 +287,10 @@ impl<
         key: Key,
         key_append: Key,
     ) -> Result<(), errors::DBOperationError> {
-        match self.send_command(Command::AppendLink(key,key_append)){
-            CommandResult::InsertOk=>Ok(()),
-            CommandResult::Error(e)=>Err(e),
-            _ =>Err(errors::DBOperationError::Other)
+        match self.send_command(Command::AppendLink(key, key_append)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// Takes a functin that constructs Database and performs join with current database.
@@ -303,16 +303,20 @@ impl<
     /// ```
     pub fn right_join(
         &mut self,
-        right: fn(
-            &mut ServiceClient<Key, DataType, LinkType>,
-        ) -> Result<(), errors::DBOperationError>,
+        right: Box<
+            dyn Fn(
+                &mut ServiceClient<Key, DataType, LinkType>,
+            ) -> Result<(), errors::DBOperationError>,
+        >,
     ) -> Result<(), errors::DBOperationError>
     where
-        Key: std::clone::Clone + std::cmp::Ord + Serialize,
-        DataType: std::clone::Clone + Serialize,
-        LinkType: std::clone::Clone + Serialize,
+    Key:'static,
+    DataType: 'static,
+    LinkType: 'static
     {
-        match self.send_command(Command::RightJoin(JoinFn { function: right })) {
+        let mut client = ServiceController::empty();
+        right(&mut client);   
+        match self.send_command(Command::RightJoin(client.extract_db().ok().unwrap())) {
             CommandResult::InsertOk => Ok(()),
             CommandResult::Error(e) => Err(e),
             _ => Err(errors::DBOperationError::Other),
@@ -373,6 +377,37 @@ impl<
             CommandResult::Error(e) => Err(e),
             _ => Err(errors::DBOperationError::Other),
         }
+    }
+}
+impl<
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+> std::fmt::Debug for ServiceClient<Key,DataType,LinkType> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ServiceClient")
+         .finish()
+    }
+}
+impl<
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+> std::cmp::PartialEq for ServiceClient<Key,DataType,LinkType>{
+    fn eq(&self,_:&Self)->bool{
+        false
     }
 }
 ///Holds Database and Access to Services
@@ -492,13 +527,13 @@ impl<
             Command::GetLen => self.get_len(),
             Command::RightJoin(f) => self.right_join(f),
             Command::GetDB => self.get_db(),
-            Command::AppendLink(key,append)=>self.append_link(key,append)
+            Command::AppendLink(key, append) => self.append_link(key, append),
         }
     }
-    fn append_link(&mut self,key:Key,append:Key)->CommandResult<Key, DataType, LinkType>{
-        match self.db.append_links(&key, &append){
-            Ok(_)=>CommandResult::InsertOk,
-            Err(e)=>CommandResult::Error(e)
+    fn append_link(&mut self, key: Key, append: Key) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.append_links(&key, &append) {
+            Ok(_) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
         }
     }
     fn get_db(&self) -> CommandResult<Key, DataType, LinkType> {
@@ -506,27 +541,15 @@ impl<
     }
     fn right_join(
         &mut self,
-        f: JoinFn<Key, DataType, LinkType>,
+        db: crate::datastructure::DataStructure<Key, DataType, LinkType>,
     ) -> CommandResult<Key, DataType, LinkType> {
-        let mut s = ServiceController::<Key, DataType, LinkType>::empty();
-        let function = f.function;
-        let service_res = function(&mut s);
-        if service_res.is_ok() {
-            let db_res = s.extract_db();
-            if db_res.is_ok() {
-                let r = self.db.right_join(&db_res.ok().unwrap());
-                match r {
-                    Ok(r) => {
-                        self.db=r;
-                        CommandResult::InsertOk
-                    },
-                    Err(e) => CommandResult::Error(e),
-                }
-            } else {
-                CommandResult::Error(db_res.err().unwrap())
+        let r = self.db.right_join(&db);
+        match r {
+            Ok(r) => {
+                self.db = r;
+                CommandResult::InsertOk
             }
-        } else {
-            CommandResult::Error(service_res.err().unwrap())
+            Err(e) => CommandResult::Error(e),
         }
     }
     fn get_len(&self) -> CommandResult<Key, DataType, LinkType> {
@@ -747,16 +770,16 @@ mod test {
         dsr.insert(0, 0);
         dsr.insert(1, 1);
         dsr.insert(2, 2);
-        dsr.right_join(|c| {
+        dsr.right_join(Box::new(|c| {
             c.insert(0, 0);
             c.insert(1, 1);
             c.insert(2, 2);
             Ok(())
-        });
+        }));
         assert_eq!(dsr.get(0).ok().unwrap(), 0);
         assert_eq!(dsr.get(1).ok().unwrap(), 1);
         assert_eq!(dsr.get(2).ok().unwrap(), 2);
-        assert!(dsr.right_join(|c| { c.insert(4, 4) }).is_ok());
+        assert!(dsr.right_join(Box::new(|c| { c.insert(4, 4) })).is_ok());
         assert_eq!(dsr.get(4).ok().unwrap(), 4);
         assert!(dsr.get(1).is_err());
     }
