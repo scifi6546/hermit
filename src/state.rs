@@ -278,7 +278,7 @@ impl State {
   }*/
 #[derive(Clone)]
 //used to declare things that will be set in the cli args
-struct StartupOptions {
+pub struct StartupOptions {
     use_ssl: bool, //whether or not to redirect to https
 }
 fn init_state(startup_otions: StartupOptions) -> Result<State, String> {
