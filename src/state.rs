@@ -17,7 +17,6 @@ mod users;
 const DB_PATH: &str = "db.json";
 const VIDEO_WEB_PATH: &str = "/files/videos/";
 const THUMB_WEB_PATH: &str = "/files/thumbnails/";
-#[derive(Clone)]
 pub struct State {
     pub config_file: config::Config,
     pub video_db: videos::VideoDB,
@@ -231,7 +230,7 @@ impl State {
         if video_res.is_ok() {
             self.video_db = video_res.ok().unwrap()
         } else {
-            error!("{}", video_res.clone().err().unwrap());
+            error!("{}", video_res.err().unwrap());
             return Err(video_res.err().unwrap());
         }
         info!("reloaded server successfully");
@@ -346,9 +345,9 @@ fn make_ssl_key() {
         info!("made ssl cert");
     }
 }
-pub fn run_webserver(state_in: &mut State, use_ssl: bool) {
+pub fn run_webserver(state_in: State, use_ssl: bool) {
     let thumb_dir = state_in.get_thumb_dir();
-    let temp_state = RwLock::new(state_in.clone());
+    let temp_state = RwLock::new(state_in);
     let shared_state = web::Data::new(temp_state);
     // load ssl keys
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
