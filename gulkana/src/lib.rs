@@ -309,14 +309,14 @@ impl<
             ) -> Result<(), errors::DBOperationError>,
         >,
     ) -> Result<(), errors::DBOperationError>
-    where
-    Key:'static,
+    where Key: 'static,
     DataType: 'static,
-    LinkType: 'static
+    LinkType: 'static,
     {
         let mut client = ServiceController::empty();
-        right(&mut client);   
-        match self.send_command(Command::RightJoin(client.extract_db().ok().unwrap())) {
+        right(&mut client);  
+        let db =  client.extract_db().ok().unwrap().clone();
+        match self.send_command(Command::RightJoin(db)) {
             CommandResult::InsertOk => Ok(()),
             CommandResult::Error(e) => Err(e),
             _ => Err(errors::DBOperationError::Other),
@@ -412,8 +412,8 @@ impl<
 }
 ///Holds Database and Access to Services
 pub struct ServiceController<
-    Key: 'static
-        + std::marker::Sync
+    Key:
+        std::marker::Sync
         + std::marker::Send
         + std::clone::Clone
         + Serialize
@@ -426,8 +426,7 @@ pub struct ServiceController<
     service: Vec<ServiceDB<Key, DataType, LinkType>>,
 }
 impl<
-        Key: 'static
-            + std::marker::Sync
+        Key: std::marker::Sync
             + std::marker::Send
             + std::clone::Clone
             + Serialize
@@ -451,7 +450,8 @@ impl<
 {
     pub fn backed(
         path: String,
-    ) -> Result<ServiceClient<Key, DataType, LinkType>, crate::errors::DBOperationError> {
+    ) -> Result<ServiceClient<Key, DataType, LinkType>, crate::errors::DBOperationError>
+    where Key: 'static {
         let c: fn(String) -> ServiceController<Key, DataType, LinkType> =
             |path| ServiceController {
                 db: backed_datastructure(&path).ok().unwrap(),
@@ -459,7 +459,9 @@ impl<
             };
         Ok(Self::make_controller_thread(c, path))
     }
-    pub fn empty() -> ServiceClient<Key, DataType, LinkType> {
+    pub fn empty() 
+    -> ServiceClient<Key, DataType, LinkType> 
+    where Key: 'static{
         Self::make_controller_thread(
             |()| ServiceController {
                 db: new_datastructure(),
@@ -467,6 +469,15 @@ impl<
             },
             (),
         )
+    }
+    fn from_db(database: DataStructure<Key,DataType,LinkType>)->ServiceClient<Key, DataType, LinkType>
+    where Key: 'static{
+        Self::make_controller_thread(|db|{
+            ServiceController {
+                db: db,
+                service: vec![],
+            }
+        }, database)
     }
     /// The main thread of the program
     fn main_loop(&mut self) {
@@ -642,14 +653,23 @@ impl<
     fn get_contains(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
         CommandResult::Contains(self.db.contains(&key))
     }
-    fn make_controller_thread<Args: 'static + std::marker::Send>(
+    fn make_controller_thread<Args: std::marker::Send>(
         s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
         args: Args,
-    ) -> ServiceClient<Key, DataType, LinkType> {
+
+    ) 
+   -> ServiceClient<Key, DataType, LinkType> 
+   where Key:'static
+   {
         let (send, recieve) = channel();
+        let mut controller = s(args);
+        let db = controller.db;
         #[allow(unused_must_use)]
         std::thread::spawn(move || {
-            let mut controller = s(args);
+            let mut controller = ServiceController{
+                db:db,
+                service: vec![]
+            };
             send.send(controller.add_service());
             controller.main_loop();
         });
