@@ -230,8 +230,7 @@ impl State {
         if video_res.is_ok() {
             self.video_db = video_res.ok().unwrap()
         } else {
-            error!("{}", video_res.err().unwrap());
-            return Err(video_res.err().unwrap());
+            return Err(video_res.err().unwrap().clone());
         }
         info!("reloaded server successfully");
         return Ok("done".to_string());
@@ -277,6 +276,7 @@ impl State {
           //tera
       };
   }*/
+#[derive(Clone)]
 //used to declare things that will be set in the cli args
 struct StartupOptions {
     use_ssl: bool, //whether or not to redirect to https
@@ -345,14 +345,17 @@ fn make_ssl_key() {
         info!("made ssl cert");
     }
 }
-pub fn run_webserver(state_in: State, use_ssl: bool) {
-    let thumb_dir = state_in.get_thumb_dir();
-    let temp_state = RwLock::new(state_in);
-    let shared_state = web::Data::new(temp_state);
+pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,startup:StartupOptions,use_ssl:bool) {
+
+
+    
     // load ssl keys
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
     let http_server = HttpServer::new(move || {
+        let temp_state = RwLock::new(state_fn(startup.clone()).ok().unwrap());
+        let thumb_dir = (*temp_state.read().unwrap()).get_thumb_dir();
+        let shared_state = web::Data::new(temp_state);
         App::new()
             .wrap(
                 CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
@@ -405,10 +408,9 @@ pub fn run_webserver(state_in: State, use_ssl: bool) {
 pub fn init(use_ssl: bool) {
     let state_res = init_state(StartupOptions { use_ssl: use_ssl });
     if state_res.is_ok() {
-        run_webserver(&mut state_res.ok().unwrap(), use_ssl);
+        run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
     } else {
-        let mut state = empty_state(StartupOptions { use_ssl: use_ssl });
-        run_webserver(&mut state, use_ssl);
+        run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
     }
 }
 #[derive(Deserialize)]
