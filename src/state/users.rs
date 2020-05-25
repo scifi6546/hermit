@@ -67,7 +67,7 @@ impl UserVec {
     pub fn logout(&mut self, token: String) -> Result<String, String> {
         let keys = self._users.get_keys().ok().unwrap();
         for username in keys {
-            let user_res = self._users.get(username);
+            let user_res = self._users.get(username.clone());
             if user_res.is_ok() {
                 let user = user_res.ok().unwrap();
                 if user.token == token {
@@ -86,7 +86,7 @@ impl UserVec {
     }
     /// if  verification is sucessfull returns string with token if failed returns error message
     pub fn verify_user(&mut self, username_in: String, password: String) -> Result<String, String> {
-        let user_res = self._users.get(username_in);
+        let user_res = self._users.get(username_in.clone());
         if user_res.is_ok() {
             let mut user = user_res.ok().unwrap().clone();
 
@@ -106,7 +106,7 @@ impl UserVec {
         return Err("auth failed".to_string());
     }
     //generates a valid token
-    fn make_token(&self) -> String {
+    fn make_token(&mut self) -> String {
         let token_len = 20;
         let mut token: String = String::new();
         token.reserve(token_len);
@@ -123,7 +123,7 @@ impl UserVec {
         return token;
     }
     //verifies a token and makes sure user is authorized
-    pub fn verify_token(&self, token: String) -> bool {
+    pub fn verify_token(&mut self, token: String) -> bool {
         if token == "" {
             return false;
         }
@@ -135,7 +135,7 @@ impl UserVec {
         return false;
     }
     #[allow(dead_code)]
-    pub fn get_token(&self, username_in: String) -> Result<String, String> {
+    pub fn get_token(&mut self, username_in: String) -> Result<String, String> {
         for (_username, user) in self._users.iter_data().unwrap() {
             if username_in == user.name {
                 return Ok(user.token.clone());
@@ -145,10 +145,10 @@ impl UserVec {
     }
     //checks if the structer is empty
     #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(&mut self) -> bool {
         self._users.len().ok().unwrap() == 0
     }
-    pub fn print_users(&self) -> String {
+    pub fn print_users(&mut self) -> String {
         let mut out: String = String::new();
         out.push_str("start users");
         for (_username, user) in self._users.iter_data().unwrap() {
@@ -161,7 +161,7 @@ impl UserVec {
         out.push_str("end users");
         return out;
     }
-    pub fn ret_conf_users(&self) -> Vec<UserConf> {
+    pub fn ret_conf_users(&mut self) -> Vec<UserConf> {
         let mut vec_out: Vec<UserConf> = Vec::new();
         for (_username, user) in self._users.iter_data().unwrap() {
             vec_out.push(UserConf {
@@ -171,7 +171,7 @@ impl UserVec {
         }
         return vec_out;
     }
-    pub fn iter(&self) -> gulkana::DataIter<(std::string::String, User)> {
+    pub fn iter(&mut self) -> gulkana::DataIter<(std::string::String, User)> {
         return self._users.iter_data().unwrap();
     }
 }

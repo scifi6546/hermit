@@ -43,7 +43,7 @@ impl State {
         }
         return Err("invalid credentials".to_string());
     }
-    pub fn is_auth(&self, token: String) -> bool {
+    pub fn is_auth(&mut self, token: String) -> bool {
         return self.users.verify_token(token);
     }
     pub fn logout(&mut self, token: String) -> Result<String, String> {
@@ -83,14 +83,14 @@ impl State {
         }
     }
 
-    pub fn get_thumb_res(&self, token: String) -> Result<u32, String> {
+    pub fn get_thumb_res(&mut self, token: String) -> Result<u32, String> {
         if self.is_auth(token) {
             return self.video_db.get_thumb_res();
         } else {
             return Err("not authorized".to_string());
         }
     }
-    pub fn get_videos(&self, user_token: String) -> Result<Vec<videos::VideoHtml>, String> {
+    pub fn get_videos(&mut self, user_token: String) -> Result<Vec<videos::VideoHtml>, String> {
         if self.is_auth(user_token) {
             return Ok(self.video_db.get_vid_html_vec(
                 VIDEO_WEB_PATH.to_string(),
@@ -102,7 +102,7 @@ impl State {
         }
     }
     pub fn get_vid_html_from_path(
-        &self,
+        &mut self,
         user_token: String,
         video_path: String,
     ) -> Result<videos::VideoHtml, String> {
@@ -139,7 +139,7 @@ impl State {
         return Err("not authorized".to_string());
     }
     pub fn get_playlist_all(
-        &self,
+        &mut self,
         user_token: String,
     ) -> Result<Vec<videos::HtmlPlaylist>, String> {
         if self.is_auth(user_token) {
@@ -150,7 +150,7 @@ impl State {
             return Err("not authorized".to_string());
         }
     }
-    pub fn get_vid_path(&self, user_token: String, video_name: String) -> Result<String, String> {
+    pub fn get_vid_path(&mut self, user_token: String, video_name: String) -> Result<String, String> {
         if self.is_auth(user_token) {
             let res = self.video_db.get_vid_path(video_name);
             if res.is_ok() {
@@ -235,7 +235,7 @@ impl State {
         info!("reloaded server successfully");
         return Ok("done".to_string());
     }
-    pub fn get_users(&self, token: String) -> Result<Vec<UserOut>, String> {
+    pub fn get_users(&mut self, token: String) -> Result<Vec<UserOut>, String> {
         if self.is_auth(token) {
             let mut out: Vec<UserOut> = Vec::new();
             for (_username, user) in self.users.iter() {
@@ -248,7 +248,7 @@ impl State {
             return Err("not authorized".to_string());
         }
     }
-    pub fn print_users(&self) {
+    pub fn print_users(&mut self) {
         println!("Users: ");
         println!("{}", self.users.print_users());
     }
@@ -488,7 +488,7 @@ pub fn get_video(
 ) -> Result<String> {
     let token_res = session.get("token");
     if token_res.is_ok() {
-        let state = data.read().unwrap();
+        let mut state = data.write().unwrap();
         let token = token_res.unwrap().unwrap();
         let video_res = state.get_vid_html_from_path(token, info.video_path.clone());
         if video_res.is_ok() {
@@ -505,7 +505,7 @@ pub fn get_video(
 pub fn get_users(data: web::Data<RwLock<State>>, session: Session) -> impl Responder {
     let token = session.get("token");
     if token.is_ok() {
-        let state = data.read().unwrap();
+        let mut state = data.write().unwrap();
 
         let out = state.get_users(token.unwrap().unwrap());
         if out.is_ok() {
@@ -530,7 +530,7 @@ fn get_videos(data: web::Data<RwLock<State>>, session: Session) -> impl Responde
     let token_res = session.get("token");
     if token_res.is_ok() {
         let token = token_res.unwrap().unwrap();
-        let state_data = data.read().unwrap();
+        let mut state_data = data.write().unwrap();
         let videos = state_data.get_videos(token);
         let out = serde_json::to_string(&videos).unwrap();
         return HttpResponse::Ok().body(out);
@@ -548,7 +548,7 @@ pub fn get_logged_in(data: web::Data<RwLock<State>>, session: Session) -> impl R
         let token_t = token_res.unwrap();
         if token_t.is_some() {
             let token = token_t.unwrap();
-            let state_data = data.read().unwrap();
+            let mut state_data = data.write().unwrap();
             let is_auth = state_data.is_auth(token);
             if is_auth {
                 let json = LoggedIn {
@@ -710,7 +710,7 @@ fn edit_playlist_api(
 }
 
 fn get_playlist_api(data: web::Data<RwLock<State>>, session: Session) -> Result<String> {
-    let state_data = data.write().unwrap();
+    let mut state_data = data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok() {
         let token = token_res.ok().unwrap().unwrap();
@@ -752,7 +752,7 @@ pub fn video_files(
     path: web::Path<(String,)>,
 ) -> impl Responder {
     let token_res = session.get("token");
-    let state_data = data.read().unwrap();
+    let mut state_data = data.write().unwrap();
     let vid_name: String = path.0.clone();
     println!("vid_name: {}", vid_name);
     if token_res.is_ok() {
@@ -783,7 +783,7 @@ struct ThumbRes {
     thumbnail_resolution: u32,
 }
 pub fn get_thumb_res(data: web::Data<RwLock<State>>, session: Session) -> Result<String> {
-    let state_data = data.write().unwrap();
+    let mut state_data = data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok() {
         let token = token_res.ok().unwrap().unwrap();
