@@ -19,9 +19,9 @@ WORKDIR /home/app_user
 USER app_user
 RUN mkdir /home/app_user/data
 WORKDIR /home/app_user/data
-RUN cp -r /usr/src/hermit/static /home/app_user/data/static
+RUN cp -r /usr/src/hermit/static /home/app_user/static
 RUN mkdir thumbnails
 RUN ls -alh
 ENV SSL=""
 ENV RUST_LOG=info
-CMD hermit-rust $SSL
+CMD hermit-rust $SSL -static "/home/app_user/static/static/"
