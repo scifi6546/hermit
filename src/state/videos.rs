@@ -190,8 +190,11 @@ impl VideoDB {
         thumbnail_base: String,
     ) -> Vec<VideoHtml> {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
-        debug!("database size when getting data: {}", self.database.len().ok().unwrap());
-        for (_key, file) in self.database.iter_data().unwrap(){
+        debug!(
+            "database size when getting data: {}",
+            self.database.len().ok().unwrap()
+        );
+        for (_key, file) in self.database.iter_data().unwrap() {
             if file.can_show_file() {
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
@@ -308,7 +311,9 @@ impl VideoDB {
         let mut playlist_list = vec![];
         for (link, linked_keys) in self
             .database
-            .iter_link_type(DirectoryTypes::Playlist(PlaylistMeta {})).ok().unwrap()
+            .iter_link_type(DirectoryTypes::Playlist(PlaylistMeta {}))
+            .ok()
+            .unwrap()
         {
             let mut vid_vec = vec![];
             for key in linked_keys {
@@ -345,33 +350,27 @@ impl VideoDB {
         let db_path = self.database_path.clone();
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
         info!("checking database against file system");
-
         if source.is_some() && db_path.is_some() {
-            let db_res = db_from_dir(
-                source.unwrap(),
-                self.thumb_dir.clone(),
-                self.database_path.clone().unwrap(),
-                self.thumb_res,
-                
-            );
-            
-            if db_res.is_ok() {
-                let db = db_res.ok().unwrap();
-                let join_res = self.database.right_join(Box::new(|c|{db_from_dir(source.unwrap(), self.thumb_dir.clone(), c}));
+            let arg = (source.unwrap(),
+            self.thumb_dir.clone(),
+            self.database_path.clone().unwrap(),
+        self.thumb_res);
+            let join_res = self.database.right_join::<(std::string::String, std::string::String, std::string::String, u32)>(Box::new(|c,arg| {
+                Ok(db_from_dir(
+                    arg.0,
+                    arg.1,
+                    arg.2,
+                    arg.3,
+                    c,
+                ))
+            }),arg);
 
-                if join_res.is_ok() {
-                    let res = self.database.make_backed(db_path.unwrap());
-                    if res.is_err() {
-                        error!("Failed to write database to disk");
-                        return Err("Failed to write database to disk".to_string());
-                    }
+            if join_res.is_ok() {
+                let res = self.database.make_backed(db_path.unwrap());
+                if res.is_err() {
+                    error!("Failed to write database to disk");
+                    return Err("Failed to write database to disk".to_string());
                 }
-            } else {
-                error!(
-                    "failed to make database from directory: {}",
-                    db_res.err().unwrap()
-                );
-                return Err(db_res.err().unwrap());
             }
         }
         for play in play_before_join {
@@ -462,7 +461,7 @@ fn db_from_dir(
     _thumb_dir: String,
     _database_path: String,
     _thumb_res: u32,
-    service_db: &mut gulkana::ServiceClient<String, FileData, DirectoryTypes>
+    service_db: &mut gulkana::ServiceClient<String, FileData, DirectoryTypes>,
 ) {
     info!("making database from directory: {}", read_dir);
     let dir_iter_res = Path::new(&read_dir).read_dir();
@@ -531,10 +530,10 @@ pub fn empty() -> VideoDB {
 }
 #[cfg(test)]
 mod test {
-    use std::fs::File;
     use super::*;
+    use std::fs::File;
     #[test]
-    fn build_database_empty(){
+    fn build_database_empty() {
         let db = empty();
     }
 }

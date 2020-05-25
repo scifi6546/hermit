@@ -301,20 +301,21 @@ impl<
     /// });
     /// assert_eq!(dsr.get(0).ok().unwrap(),0);
     /// ```
-    pub fn right_join(
+    pub fn right_join<Args>(
         &mut self,
         right: Box<
             dyn Fn(
                 &mut ServiceClient<Key, DataType, LinkType>,
+                Args
             ) -> Result<(), errors::DBOperationError>,
-        >,
+        >,arg:Args
     ) -> Result<(), errors::DBOperationError>
     where Key: 'static,
     DataType: 'static,
     LinkType: 'static,
     {
         let mut client = ServiceController::empty();
-        right(&mut client);  
+        right(&mut client,arg);  
         let db =  client.extract_db().ok().unwrap().clone();
         match self.send_command(Command::RightJoin(db)) {
             CommandResult::InsertOk => Ok(()),
