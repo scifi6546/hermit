@@ -140,7 +140,7 @@ impl VideoDB {
         }
         for key in keys {
             //make thumbnail
-            let file_res = self.database.get(key);
+            let file_res = self.database.get(key.clone());
             if file_res.is_ok() {
                 let mut file = file_res.ok().unwrap().clone();
                 if file.file_type == FileTypes::Video {
@@ -184,7 +184,7 @@ impl VideoDB {
         }
     }
     pub fn get_vid_html_vec(
-        &self,
+        &mut self,
         path_base: String,
         html_path_base: String,
         thumbnail_base: String,
@@ -222,7 +222,7 @@ impl VideoDB {
         return vec_out;
     }
     pub fn get_vid_html_from_path(
-        &self,
+        &mut self,
         path_base: String,
         thumbnail_base: String,
         vid_path: String,
@@ -256,7 +256,7 @@ impl VideoDB {
         path: String,
         to_change_to: VideoEditData,
     ) -> Result<String, String> {
-        let res = self.database.get(path);
+        let res = self.database.get(path.clone());
         if res.is_ok() {
             let mut data = res.ok().unwrap().clone();
             data.name = to_change_to.name;
@@ -307,7 +307,7 @@ impl VideoDB {
             return Err("failed to make playlist".to_string());
         }
     }
-    pub fn get_playlist_all(&self, path_base: String, thumbnail_base: String) -> Vec<HtmlPlaylist> {
+    pub fn get_playlist_all(&mut self, path_base: String, thumbnail_base: String) -> Vec<HtmlPlaylist> {
         let mut playlist_list = vec![];
         for (link, linked_keys) in self
             .database
@@ -334,7 +334,7 @@ impl VideoDB {
         return playlist_list;
     }
     //gets the path of a video with a certain name
-    pub fn get_vid_path(&self, name: String) -> Result<String, String> {
+    pub fn get_vid_path(&mut self, name: String) -> Result<String, String> {
         for (_key, video) in self.database.iter_data().unwrap() {
             if video.name == name {
                 return Ok(video.file_path.clone());
@@ -393,7 +393,7 @@ pub fn new(
     num_recurse: u32,
 ) -> Result<VideoDB, String> {
     info!("creating backed datastructure");
-    let make_db_res = gulkana::ServiceController::backed(database_path);
+    let make_db_res = gulkana::ServiceController::backed(database_path.clone());
 
     if make_db_res.is_ok() {
         info!("made backed datastructure at path: {}", database_path);
