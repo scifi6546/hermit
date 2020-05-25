@@ -1,7 +1,7 @@
 use argon2::{self, Config};
-use gulkana::{ServiceController,ServiceClient};
-use serde::{Serialize,Deserialize};
-#[derive(Clone, Serialize,Deserialize)]
+use gulkana::{ServiceClient, ServiceController};
+use serde::{Deserialize, Serialize};
+#[derive(Clone, Serialize, Deserialize)]
 pub struct User {
     pub name: String,
     pub password: String,
@@ -9,7 +9,7 @@ pub struct User {
 }
 type Username = String;
 #[allow(dead_code)]
-#[derive(Clone, Serialize,PartialEq,Deserialize)]
+#[derive(Clone, Serialize, PartialEq, Deserialize)]
 pub enum UserCategories {
     Admin,
     RegularUser,

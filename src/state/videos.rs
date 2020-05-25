@@ -351,19 +351,21 @@ impl VideoDB {
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
         info!("checking database against file system");
         if source.is_some() && db_path.is_some() {
-            let arg = (source.unwrap(),
-            self.thumb_dir.clone(),
-            self.database_path.clone().unwrap(),
-        self.thumb_res);
-            let join_res = self.database.right_join::<(std::string::String, std::string::String, std::string::String, u32)>(Box::new(|c,arg| {
-                Ok(db_from_dir(
-                    arg.0,
-                    arg.1,
-                    arg.2,
-                    arg.3,
-                    c,
-                ))
-            }),arg);
+            let arg = (
+                source.unwrap(),
+                self.thumb_dir.clone(),
+                self.database_path.clone().unwrap(),
+                self.thumb_res,
+            );
+            let join_res = self.database.right_join::<(
+                std::string::String,
+                std::string::String,
+                std::string::String,
+                u32,
+            )>(
+                Box::new(|c, arg| Ok(db_from_dir(arg.0, arg.1, arg.2, arg.3, c))),
+                arg,
+            );
 
             if join_res.is_ok() {
                 let res = self.database.make_backed(db_path.unwrap());
