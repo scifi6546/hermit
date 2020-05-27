@@ -1,1050 +1,807 @@
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::ErrorKind;
-
-use std::fmt;
-//rust lint does not see that rand is used so to kill error
-#[allow(unused_imports)]
-use rand::prelude;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
-mod opt_pair;
-use opt_pair::{new_optstruct_a, new_optstruct_b, OptStruct};
 mod errors;
 use errors::*;
-/// # Gulkana
-/// Gulkana is a lightweight key based database for string files.
-/// The main struct is DataStructure
-
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub struct Link<Key: std::clone::Clone, TypeLabel: std::clone::Clone> {
-    type_label: TypeLabel,
-    children: Vec<Key>,
-}
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize)]
-pub struct Node<
-    Key: std::cmp::PartialEq + std::clone::Clone,
-    Item: std::clone::Clone,
-    LinkLabel: std::clone::Clone,
+mod datastructure;
+use datastructure::{backed_datastructure, new_datastructure, DataStructure};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+use std::sync::mpsc::{channel, Receiver, Sender};
+mod iterators;
+use iterators::*;
+mod commands;
+use commands::*;
+pub use iterators::DataIter;
+///Service for use Database Side
+pub struct ServiceDB<
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
-    item: OptStruct<Link<Key, LinkLabel>, Item>,
+    send_result: Sender<CommandResult<Key, DataType, LinkType>>,
+    recieve_commands: Receiver<Command<Key, DataType, LinkType>>,
 }
 impl<
-        KeyType: std::cmp::PartialEq + std::clone::Clone,
-        DataType: std::clone::Clone,
-        LinkLabel: std::clone::Clone,
-    > Node<KeyType, DataType, LinkLabel>
+        Key: std::marker::Sync
+            + std::marker::Send
+            + std::cmp::PartialEq
+            + std::clone::Clone
+            + Serialize
+            + std::cmp::Ord
+            + std::fmt::Display,
+        DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+        LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    > ServiceDB<Key, DataType, LinkType>
 {
-    pub fn get_item(&self) -> Result<&DataType, DBOperationError> {
-        let data = self.item.b();
-        if data.is_some() {
-            return Ok(data.unwrap());
+    fn get_command(&mut self) -> Option<Command<Key, DataType, LinkType>> {
+        let c = self.recieve_commands.try_recv();
+        if c.is_ok() {
+            Some(c.ok().unwrap())
         } else {
-            return Err(DBOperationError::NodeNotData);
+            None
         }
     }
-    pub fn get_item_mut(&mut self) -> Result<&mut DataType, DBOperationError> {
-        let data = self.item.b_mut();
-        if data.is_some() {
-            return Ok(data.unwrap());
-        } else {
-            return Err(DBOperationError::NodeNotData);
-        }
-    }
-    pub fn get_link(&self) -> Result<&Link<KeyType, LinkLabel>, DBOperationError> {
-        let data = self.item.a();
-        if data.is_some() {
-            return Ok(data.unwrap());
-        } else {
-            return Err(DBOperationError::NodeNotLink);
-        }
+    #[allow(unused_must_use)]
+    fn send_command_result(&mut self, res: CommandResult<Key, DataType, LinkType>) {
+        self.send_result.send(res);
     }
 }
-fn new_node<
-    K: std::cmp::PartialEq + std::clone::Clone,
-    I: std::clone::Clone,
-    LinkLabel: std::clone::Clone,
->(
-    input: I,
-) -> Node<K, I, LinkLabel>
-where
-    K: std::clone::Clone,
-    I: std::clone::Clone,
-{
-    let foo = Node {
-        item: new_optstruct_b(input),
-    };
-    return foo;
-}
-fn new_node_link<
-    K: std::cmp::PartialEq + std::clone::Clone,
-    I: std::clone::Clone,
-    LinkLabel: std::clone::Clone,
->(
-    input: &std::vec::Vec<K>,
-    link_type: LinkLabel,
-) -> Node<K, I, LinkLabel>
-where
-    K: std::clone::Clone,
-    I: std::clone::Clone,
-{
-    let foo = Node {
-        item: new_optstruct_a(Link {
-            children: input.clone(),
-            type_label: link_type,
-        }),
-    };
-    return foo;
-}
-
-impl DBOperationError {
-    fn to_string(self) -> String {
-        match self {
-            Self::SerializeError => "failed seriailzing database".into(),
-            Self::FSError => "Failed to write".into(),
-            Self::KeyAllreadyPresent => "Key Allready Present".into(),
-            Self::KeyNotFound => "Key Not found".into(),
-            Self::NodeNotLink => "Node Not Link".into(),
-            Self::NodeNotData => "Node Not Data".into(),
-            Self::ParseError => "Parse Error".into(),
-            Self::FileNotFound => "File Not Found".into(),
-            Self::FilePermissionDenied => "File Permission Denied".into(),
-            Self::NetworkConnectionRefused => "Network COnnection Refused".into(),
-            Self::NetworkConnectionReset => "Network Connection Reset".into(),
-            Self::NetworkNotConnected => "Network Not Connected".into(),
-            Self::NetworkAddressInUse => "Network Address In Use".into(),
-            Self::NetworkAddrNotAvailable => "Network Address Not Availible".into(),
-            Self::BrokenPipe => "Broken Pipe".into(),
-            Self::FileAlreadyExists => "File ALready Exists".into(),
-            Self::WouldBlock => "Would Block".into(),
-            Self::InvalidInput => "Invalid Input".into(),
-            Self::InvalidData => "Invalid Data".into(),
-            Self::TimedOut => "Timed Out".into(),
-            Self::Interrupted => "Interrupted".into(),
-            Self::Other => "Other".into(),
-            Self::UnexpectedEof => "Unexpected End of File".into(),
-        }
-    }
-}
-impl Into<String> for DBOperationError {
-    fn into(self) -> String {
-        self.to_string()
-    }
-}
-
-impl fmt::Display for DBOperationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.clone().to_string())
-    }
-}
-impl From<SerializeError> for DBOperationError {
-    fn from(error: SerializeError) -> Self {
-        match error {
-            _ => Self::SerializeError,
-        }
-    }
-}
-impl From<serde_json::error::Error> for DBOperationError {
-    fn from(error: serde_json::error::Error) -> Self {
-        match error {
-            _ => Self::ParseError,
-        }
-    }
-}
-impl From<std::io::Error> for DBOperationError {
-    fn from(error: std::io::Error) -> Self {
-        match error.kind() {
-            ErrorKind::NotFound => Self::FileNotFound,
-            ErrorKind::PermissionDenied => Self::FilePermissionDenied,
-            ErrorKind::ConnectionRefused => Self::NetworkConnectionRefused,
-            ErrorKind::ConnectionReset => Self::NetworkConnectionReset,
-            ErrorKind::NotConnected => Self::NetworkNotConnected,
-            ErrorKind::AddrInUse => Self::NetworkAddressInUse,
-            ErrorKind::AddrNotAvailable => Self::NetworkAddrNotAvailable,
-            ErrorKind::BrokenPipe => Self::BrokenPipe,
-            ErrorKind::AlreadyExists => Self::FileAlreadyExists,
-            ErrorKind::WouldBlock => Self::WouldBlock,
-            ErrorKind::InvalidInput => Self::InvalidInput,
-            ErrorKind::InvalidData => Self::InvalidData,
-            ErrorKind::TimedOut => Self::TimedOut,
-            ErrorKind::Interrupted => Self::Interrupted,
-            ErrorKind::Other => Self::Other,
-            ErrorKind::UnexpectedEof => Self::UnexpectedEof,
-            _ => Self::Other,
-        }
-    }
-}
-/// Struct usd to store data
-/// Inorder to allow new fields in input struct to be added
-/// make all fields Optional e.g.
-/// ```
-/// struct bar{
-///     foo:Option<String>,
-///     bar:Option<u32>,
-/// }
-/// ```
-/// this way the data structure is compatible with old versions of the database.
-#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct DataStructure<
-    KeyType: std::cmp::Ord + std::clone::Clone + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
+///Service used on Client Side
+pub struct ServiceClient<
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
 > {
-    tree: BTreeMap<KeyType, Node<KeyType, DataType, LinkLabel>>,
-    file_backing: Option<String>, // file to write back to
-}
-///Iterator over all data nodes
-pub struct DataNodeIter<
-    'a,
-    KeyType: std::cmp::Ord + std::clone::Clone,
-    DataType: std::clone::Clone,
-    LinkLabel: std::clone::Clone,
-> {
-    iter: std::collections::btree_map::Iter<'a, KeyType, Node<KeyType, DataType, LinkLabel>>,
+    send_commands: Sender<Command<Key, DataType, LinkType>>,
+    recieve_result: Receiver<CommandResult<Key, DataType, LinkType>>,
 }
 impl<
-        'a,
-        KeyType: std::cmp::Ord + std::clone::Clone,
-        DataType: std::clone::Clone,
-        LinkLabel: std::clone::Clone,
-    > Iterator for DataNodeIter<'a, KeyType, DataType, LinkLabel>
+        Key: std::marker::Sync
+            + std::marker::Send
+            + std::cmp::PartialEq
+            + Serialize
+            + std::cmp::Ord
+            + std::clone::Clone
+            + std::fmt::Display+DeserializeOwned,
+        DataType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone+DeserializeOwned,
+        LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone+DeserializeOwned+std::cmp::PartialEq,
+    > ServiceClient<Key, DataType, LinkType>
 {
-    type Item = (&'a KeyType, &'a DataType);
-    fn next(&mut self) -> Option<Self::Item> {
-        let data = self.iter.next();
-        if data.is_none() {
-            return None;
-        } else {
-            let (key, node_unwrapped) = data.unwrap();
-            //getting data in node opt_pair;
-            let data_opt = node_unwrapped.item.b();
-            if data_opt.is_none() {
-                return self.next();
-            } else {
-                return Some((key, data_opt.unwrap()));
-            }
-        }
+    #[allow(unused_must_use)]
+    fn send_command(
+        &mut self,
+        command: Command<Key, DataType, LinkType>,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        self.send_commands.send(command);
+        return self.recieve_result.recv().ok().unwrap();
     }
-}
-pub struct DataMutIter<
-    'a,
-    KeyType: std::cmp::Ord + std::clone::Clone,
-    DataType: std::clone::Clone,
-    LinkLabel: std::clone::Clone,
-> {
-    iter: std::collections::btree_map::IterMut<'a, KeyType, Node<KeyType, DataType, LinkLabel>>,
-}
-impl<
-        'a,
-        KeyType: std::cmp::Ord + std::clone::Clone,
-        DataType: std::clone::Clone,
-        LinkLabel: std::clone::Clone,
-    > Iterator for DataMutIter<'a, KeyType, DataType, LinkLabel>
-{
-    type Item = (&'a KeyType, &'a mut DataType);
-    fn next(&mut self) -> Option<Self::Item> {
-        let data = self.iter.next();
-        if data.is_none() {
-            return None;
-        } else {
-            let (key, node_unwrapped) = data.unwrap();
-            //getting data in node opt_pair;
-            let data_opt = node_unwrapped.item.b_mut();
-            if data_opt.is_none() {
-                return self.next();
-            } else {
-                return Some((key, data_opt.unwrap()));
-            }
-        }
+    pub fn quit(&mut self) {
+        self.send_command(Command::Quit);
     }
-}
-pub struct DataLinkIter<
-    'a,
-    KeyType: std::cmp::Ord + std::clone::Clone + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
-> {
-    db: &'a DataStructure<KeyType, DataType, LinkLabel>,
-    linked_keys: &'a std::vec::Vec<KeyType>,
-    current_index: usize,
-}
-impl<
-        'a,
-        KeyType: std::cmp::Ord + std::clone::Clone + Serialize,
-        DataType: std::clone::Clone + Serialize,
-        LinkLabel: std::clone::Clone + Serialize,
-    > Iterator for DataLinkIter<'a, KeyType, DataType, LinkLabel>
-{
-    type Item = (&'a KeyType, &'a DataType);
-    fn next(&mut self) -> Option<Self::Item> {
-        let opt = self.linked_keys.get(self.current_index);
-        if opt.is_some() {
-            let res = self.db.get(&opt.unwrap().clone());
-            if res.is_ok() {
-                let data = res.ok().unwrap();
-                self.current_index += 1;
-                return Some((&opt.unwrap(), data));
-            } else {
-                return None;
-            }
-        } else {
-            return None;
-        }
-    }
-}
-pub struct DataLinkIterNoRef<
-    'a,
-    KeyType: std::cmp::Ord + std::clone::Clone + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
-> {
-    db: &'a DataStructure<KeyType, DataType, LinkLabel>,
-    linked_keys: std::vec::Vec<KeyType>,
-    current_index: usize,
-}
-impl<
-        'a,
-        KeyType: std::cmp::Ord + std::clone::Clone + Serialize,
-        DataType: std::clone::Clone + Serialize,
-        LinkLabel: std::clone::Clone + Serialize,
-    > Iterator for DataLinkIterNoRef<'a, KeyType, DataType, LinkLabel>
-{
-    type Item = (KeyType, &'a std::vec::Vec<KeyType>);
-    fn next(&mut self) -> Option<Self::Item> {
-        let opt = self.linked_keys.get(self.current_index);
-        if opt.is_some() {
-            let res = self.db.get_links(&opt.unwrap().clone());
-            if res.is_ok() {
-                let data = res.ok().unwrap();
-                self.current_index += 1;
-                return Some((opt.unwrap().clone(), data));
-            } else {
-                return None;
-            }
-        } else {
-            return None;
-        }
-    }
-}
-impl<
-        KeyType: std::cmp::Ord + std::clone::Clone + Serialize,
-        DataType: std::clone::Clone + Serialize,
-        LinkLabel: std::clone::Clone + Serialize + Serialize,
-    > DataStructure<KeyType, DataType, LinkLabel>
-{
     /// Inserts data into datastructure
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// assert!(ds.insert(&10,20).is_err());
+    ///  let mut s = gulkana::ServiceController::<u32,u32,u32>::empty();
+    ///  s.insert(0,0);
+    ///  assert_eq!(s.get(0).ok().unwrap(),0);
+    ///  s.quit();
     /// ```
-    pub fn insert(&mut self, key: &KeyType, data: DataType) -> Result<(), DBOperationError> {
-        return self.insert_node(key, new_node(data));
+    pub fn insert(&mut self, key: Key, data: DataType) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::Insert(key, data)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
     }
     ///Used to insert a link into a datastructure
     ///```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// let iter = ds.iter_links(&9).ok().unwrap();
-    ///
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert_link(9,vec![10],0);
+    /// let iter = ds.iter_links(9).ok().unwrap();
     /// for (i,j) in iter{
-    ///     assert!(*j==5);
+    ///     assert!(j==5);
     /// }
     ///```
     pub fn insert_link(
         &mut self,
-        key: &KeyType,
-        children: &std::vec::Vec<KeyType>,
-        link_type: LinkLabel,
-    ) -> Result<(), DBOperationError> {
-        return self.insert_node(key, new_node_link(children, link_type));
+        key: Key,
+        children: std::vec::Vec<Key>,
+        link_type: LinkType,
+    ) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::InsertLink(key, children, link_type)) {
+            CommandResult::InsertOk => Ok(()),
+            _ => Err(errors::DBOperationError::BrokenPipe),
+        }
     }
     ///Overwrites Links with vec shown
     ///```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// ds.insert(&11,6);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// ds.overwrite_link(&9,&vec![11],0);
-    /// ds.overwrite_link(&8,&vec![10],0);
-    /// let iter = ds.iter_links(&9).ok().unwrap();
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert(11,6);
+    /// ds.insert_link(9,vec![10],0);
+    /// ds.overwrite_link(9,vec![11],0);
+    /// ds.overwrite_link(8,vec![10],0);
+    /// let iter = ds.iter_links(9).ok().unwrap();
     ///
     /// for (_key,data) in iter{
-    ///     assert!(*data==6);
+    ///     assert!(data==6);
     /// }
-    /// let iter2 = ds.iter_links(&8).ok().unwrap();
+    /// let iter2 = ds.iter_links(8).ok().unwrap();
     ///
     /// for (_key,data) in iter2{
-    ///     assert!(*data==5);
+    ///     assert!(data==5);
     /// }
     /// ````
     pub fn overwrite_link(
         &mut self,
-        key: &KeyType,
-        children: &std::vec::Vec<KeyType>,
-        link_type: LinkLabel,
-    ) -> Result<(), DBOperationError> {
-        return self.overwrite_node(key, new_node_link(children, link_type));
-    }
-
-    fn insert_node(
-        &mut self,
-        key: &KeyType,
-        data: Node<KeyType, DataType, LinkLabel>,
-    ) -> Result<(), DBOperationError> {
-        if self.tree.contains_key(key) == false {
-            self.tree.insert(key.clone(), data);
-            self.write_back()?;
-            return Ok(());
-        } else {
-            return Err(DBOperationError::KeyAllreadyPresent);
+        key: Key,
+        children: std::vec::Vec<Key>,
+        link_type: LinkType,
+    ) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::OverwriteLink(key, children, link_type)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
-    }
-    fn overwrite_node(
-        &mut self,
-        key: &KeyType,
-        data: Node<KeyType, DataType, LinkLabel>,
-    ) -> Result<(), DBOperationError> {
-        self.tree.insert(key.clone(), data);
-        self.write_back()?;
-        return Ok(());
     }
     /// sets data in database
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,3);
-    /// ds.set_data(&10,&5);
-    /// assert!(ds.get(&10).ok().unwrap()==&5);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,3);
+    /// ds.set_data(10,5);
+    /// assert!(ds.get(10).ok().unwrap()==5);
     /// ```
-    pub fn set_data(&mut self, key: &KeyType, data: &DataType) -> Result<(), DBOperationError> {
-        self.overwrite_node(key, new_node(data.clone()))
-    }
-    fn iter(
-        &self,
-    ) -> std::collections::btree_map::Iter<'_, KeyType, Node<KeyType, DataType, LinkLabel>> {
-        self.tree.iter()
-    }
-    /// Used to iterate through data
-    ///
-    pub fn iter_data(&self) -> DataNodeIter<KeyType, DataType, LinkLabel> {
-        return DataNodeIter { iter: self.iter() };
-    }
-    /// Gets All keys in database
-    ///
-    /// ```
-    ///
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// let out = ds.get_keys();
-    /// assert!(out[0]==10);
-    pub fn get_keys(&self) -> std::vec::Vec<KeyType> {
-        return self.tree.keys().cloned().collect();
-    }
-    /// gets key from database
-    /// ```
-    ///
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// let data = ds.get(&10);
-    /// assert!(*data.ok().unwrap()==5);
-    /// ```
-    pub fn get(&self, key: &KeyType) -> Result<&DataType, DBOperationError> {
-        let temp = self.tree.get(key);
-        if temp.is_none() {
-            return Err(DBOperationError::KeyNotFound);
-        } else {
-            return temp.unwrap().get_item();
+    pub fn set_data(&mut self, key: Key, data: DataType) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::OverwriteData(key, data)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
-    fn get_node(
-        &self,
-        key: &KeyType,
-    ) -> Result<&Node<KeyType, DataType, LinkLabel>, DBOperationError> {
-        let item = self.tree.get(key);
-        if item.is_some() {
-            return Ok(item.unwrap());
-        } else {
-            return Err(DBOperationError::KeyNotFound);
+    /// Used to iterate through data
+    /// Collects all data before sending iterator so on large databases a deep copy is made of the
+    /// entire databse before sending the iterator
+    /// ```
+    ///  let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    ///  ds.insert(10,3);
+    ///  for (key,data) in ds.iter_data().unwrap(){
+    ///     assert_eq!(key,10);
+    ///     assert_eq!(data,3);
+    /// }
+    /// ````
+    pub fn iter_data(&mut self) -> Option<DataIter<(Key, DataType)>> {
+        match self.send_command(Command::GetAllData) {
+            CommandResult::ReturnAllData(v) => Some(DataIter::new(v)),
+            _ => None,
+        }
+    }
+    /// Gets All keys in database
+    /// ```
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// let out = ds.get_keys().ok().unwrap();
+    /// assert!(out[0]==10);
+    /// ```
+    pub fn get_keys(&mut self) -> Result<std::vec::Vec<Key>, errors::DBOperationError> {
+        match self.send_command(Command::GetAllKeys) {
+            CommandResult::GetAllKeys(k) => Ok(k),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
+    }
+    /// gets key from database
+    pub fn get(&mut self, key: Key) -> Result<DataType, errors::DBOperationError> {
+        let res = self.send_command(Command::GetKeys(key));
+        match res {
+            CommandResult::Get(data) => Ok(data),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// Gets linked nodes
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// ds.insert(&11,6);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// let v = ds.get_links(&9).ok().unwrap();
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert(11,6);
+    /// ds.insert_link(9,vec![10],0);
+    /// let v = ds.get_links(9).ok().unwrap();
     /// assert!(v[0]==10);
     /// ````
 
-    pub fn get_links(&self, key: &KeyType) -> Result<&Vec<KeyType>, DBOperationError> {
-        let data = self.get_node(key)?;
-        let vec_temp = data.item.a();
-        if vec_temp.is_some() {
-            return Ok(&vec_temp.unwrap().children);
-        } else {
-            return Err(DBOperationError::NodeNotLink);
+    pub fn get_links(&mut self, key: Key) -> Result<Vec<Key>, errors::DBOperationError> {
+        match self.send_command(Command::GetLinkedKeys(key)) {
+            CommandResult::GetLinkedKeys(v) => Ok(v),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
+
     /// Iterates through nodes attached to link
-    ///
     pub fn iter_links(
-        &self,
-        key: &KeyType,
-    ) -> Result<DataLinkIter<KeyType, DataType, LinkLabel>, DBOperationError> {
-        return Ok(DataLinkIter {
-            db: self,
-            linked_keys: self.get_links(key)?,
-            current_index: 0,
-        });
+        &mut self,
+        key: Key,
+    ) -> Result<DataIter<(Key, DataType)>, errors::DBOperationError> {
+        match self.send_command(Command::GetLinkedData(key)) {
+            CommandResult::GetLinkedData(v) => Ok(DataIter::new(v)),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
     }
     /// Checks if database contains a given key
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// assert!(ds.contains(&10));
-    /// assert!(!ds.contains(&20));
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// assert!(ds.contains(10).unwrap());
+    /// assert!(!ds.contains(20).unwrap());
     /// ```
-    pub fn contains(&self, key: &KeyType) -> bool {
-        return self.tree.get(key).is_some();
+    pub fn contains(&mut self, key: Key) -> Option<bool> {
+        match self.send_command(Command::GetContains(key)) {
+            CommandResult::Contains(val) => Some(val),
+            _ => None,
+        }
     }
     /// Gets iterator of links with labels
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// ds.insert(&10,5);
-    /// ds.insert_link(&9,&vec![10],0);
-    /// for (link,linked_keys) in ds.iter_link_type(&0){
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert_link(9,vec![10],0);
+    /// for (link,linked_keys) in ds.iter_link_type(0).ok().unwrap(){
     ///         assert!(link==9);
     /// }
     /// ```
     pub fn iter_link_type(
-        &self,
-        link_type: &LinkLabel,
-    ) -> DataLinkIterNoRef<KeyType, DataType, LinkLabel>
+        &mut self,
+        link_type: LinkType,
+    ) -> Result<DataIter<(Key, Vec<Key>)>, errors::DBOperationError>
     where
-        LinkLabel: std::cmp::PartialEq,
+        LinkType: std::cmp::PartialEq,
     {
-        let mut keys = vec![];
-
-        for (key, node) in self.iter() {
-            let res = node.get_link();
-            if res.is_ok() {
-                if &res.ok().unwrap().type_label == link_type {
-                    keys.push(key.clone());
-                }
-            }
+        match self.send_command(Command::IterLinkType(link_type)) {
+            CommandResult::IterLinkType(a) => Ok(DataIter::new(a)),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
-        return DataLinkIterNoRef {
-            db: self,
-            linked_keys: keys,
-            current_index: 0,
-        };
     }
+    /// ```
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(10,5);
+    /// ds.insert(11,5);
+    /// ds.insert_link(9,vec![10],0);
+    /// let v = ds.get_links(9).ok().unwrap();
+    /// assert_eq!(v[0],10);
+    /// ds.append_links(9,11);
+    /// let v2 = ds.get_links(9).ok().unwrap();
+    /// assert_eq!(v2,vec![10,11]);
+    /// ```
     pub fn append_links(
         &mut self,
-        key: &KeyType,
-        key_append: &KeyType,
-    ) -> Result<(), DBOperationError> {
-        let data = self.get_node(key)?.clone();
-        let link_vec_opt = data.item.a();
-        if link_vec_opt.is_some() {
-            let link = link_vec_opt.unwrap();
-            let mut link_vec = link.children.clone();
-            if !link_vec.contains(key_append) {
-                link_vec.push(key_append.clone());
-                return self.overwrite_link(key, &link_vec, link.type_label.clone());
-            } else {
-                return Err(DBOperationError::KeyAllreadyPresent);
-            }
-        } else {
-            return Err(DBOperationError::NodeNotLink);
+        key: Key,
+        key_append: Key,
+    ) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::AppendLink(key, key_append)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
-    pub fn right_join(
-        &self,
-        right: &DataStructure<KeyType, DataType, LinkLabel>,
-    ) -> Result<DataStructure<KeyType, DataType, LinkLabel>, DBOperationError> {
-        return right_join(self, right);
-    }
-    pub fn to_string(&self) -> Result<std::string::String, SerializeError>
-    where
-        KeyType: Serialize,
-        DataType: Serialize,
-        LinkLabel: Serialize,
+    /// Takes a functin that constructs Database and performs join with current database.
+    /// ```
+    /// let mut dsr = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// dsr.right_join(|c|{
+    ///     c.insert(0,0)
+    /// });
+    /// assert_eq!(dsr.get(0).ok().unwrap(),0);
+    /// ```
+    pub fn right_join<Args>(
+        &mut self,
+        right: Box<
+            dyn Fn(
+                &mut ServiceClient<Key, DataType, LinkType>,
+                Args
+            ) -> Result<(), errors::DBOperationError>,
+        >,arg:Args
+    ) -> Result<(), errors::DBOperationError>
+    where Key: 'static,
+    DataType: 'static,
+    LinkType: 'static,
     {
-        let res = serde_json::to_string(&self);
-        if res.is_ok() {
-            return Ok(res.ok().unwrap());
-        } else {
-            match res.err().unwrap() {
-                _ => return Err(SerializeError::Unknown),
-            }
+        let mut client = ServiceController::empty();
+        right(&mut client,arg);  
+        let db =  client.extract_db().ok().unwrap().clone();
+        match self.send_command(Command::RightJoin(db)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
+    }
+    ///
+    /// ```
+    ///  let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    ///   let s = ds.to_string();
+    /// ```
+    pub fn to_string(&self) -> Result<std::string::String, errors::SerializeError>
+    where
+        Key: Serialize,
+        DataType: Serialize,
+        LinkType: Serialize,
+    {
+        Ok("test".to_string())
     }
     /// Makes the database backed
     ///
-    pub fn make_backed(&mut self, file_backing: &String) -> Result<(), DBOperationError> {
-        self.file_backing = Some(file_backing.clone());
-        self.write_back()?;
-        Ok(())
-    }
-    ///writes back to a file
-    fn write_back(&mut self) -> Result<(), DBOperationError>
-    where
-        KeyType: Serialize,
-        DataType: Serialize,
-        LinkLabel: Serialize,
-    {
-        if self.file_backing.is_some() {
-            let mut file = File::create(self.file_backing.clone().unwrap())?;
-            let out_str = self.to_string()?;
-
-            file.write_all(out_str.as_bytes())?;
-
-            return Ok(());
-        } else {
-            return Ok(());
+    /// ```
+    /// std::fs::remove_file("db.json");
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// ds.insert(1,1);
+    /// ds.make_backed("db.json".to_string());
+    /// ds.quit();
+    /// let mut ds2 = gulkana::ServiceController::<u32,u32,u32>::backed("db.json".to_string()).ok().unwrap();
+    /// assert_eq!(ds2.get(1).ok().unwrap(),1);
+    ///
+    /// ```
+    pub fn make_backed(&mut self, file_backing: String) -> Result<(), errors::DBOperationError> {
+        match self.send_command(Command::MakeBacked(file_backing)) {
+            CommandResult::InsertOk => Ok(()),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
         }
     }
     /// Gets number of elements in db
     /// ```
-    /// let mut ds = gulkana::new_datastructure::<u32,u32,u32>();
-    /// assert!(ds.len()==0);
-    /// ds.insert(&20,20);
-    /// assert!(ds.len()==1);
+    /// let mut ds = gulkana::ServiceController::<u32,u32,u32>::empty();
+    /// assert_eq!(ds.len().ok().unwrap(),0);
+    /// ds.insert(20,20);
+    /// assert_eq!(ds.len().ok().unwrap(),1);
     /// ```
-    pub fn len(&self) -> usize {
-        return self.tree.len();
+    pub fn len(&mut self) -> Result<usize, errors::DBOperationError> {
+        match self.send_command(Command::GetLen) {
+            CommandResult::GetLen(l) => Ok(l),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
+    }
+    /// Extracts Database Only to be used by internals
+    fn extract_db(
+        &mut self,
+    ) -> Result<crate::DataStructure<Key, DataType, LinkType>, errors::DBOperationError> {
+        match self.send_command(Command::GetDB) {
+            CommandResult::GetDB(db) => Ok(db),
+            CommandResult::Error(e) => Err(e),
+            _ => Err(errors::DBOperationError::Other),
+        }
     }
 }
 impl<
-        K: std::cmp::Ord + std::fmt::Display + std::clone::Clone + Serialize,
-        DataType: std::clone::Clone + Serialize,
-        I: std::clone::Clone + Serialize,
-    > fmt::Display for DataStructure<K, DataType, I>
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\n")?;
-        for row in self.iter() {
-            write!(f, "\tkey: {}\n", row.0)?;
-        }
-        return write!(f, "");
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+> std::fmt::Debug for ServiceClient<Key,DataType,LinkType> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ServiceClient")
+         .finish()
     }
 }
-pub enum ReadError {
-    ParseError,
+impl<
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+> std::cmp::PartialEq for ServiceClient<Key,DataType,LinkType>{
+    fn eq(&self,_:&Self)->bool{
+        false
+    }
 }
-pub fn right_join<
-    K: std::cmp::Ord + std::clone::Clone + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
->(
-    left: &DataStructure<K, DataType, LinkLabel>,
-    right: &DataStructure<K, DataType, LinkLabel>,
-) -> Result<DataStructure<K, DataType, LinkLabel>, DBOperationError> {
-    let mut left_iter = left.iter().peekable();
-    let mut right_iter = right.iter().peekable();
-    let mut db = new_datastructure::<K, DataType, LinkLabel>();
-
-    loop {
-        let left_opt = left_iter.peek();
-        let right_opt = right_iter.peek();
-        if right_opt.is_none() {
-            return Ok(db);
-        } else {
-            if left_opt.is_none() {
-                db.insert_node(right_opt.unwrap().0, right_opt.unwrap().1.clone())?;
-                right_iter.next();
-            } else {
-                let left_data = left_opt.unwrap();
-                let right_data = right_opt.unwrap();
-                let left_key = left_data.0;
-                let right_key = right_data.0;
-                //if keys are the same
-                if left_key == right_key {
-                    db.insert_node(left_key, left_data.1.clone())?;
-                    left_iter.next();
-                    right_iter.next();
-                } else if left_key < right_key {
-                    left_iter.next();
-                } else if left_key > right_key {
-                    db.insert_node(right_key, right_data.1.clone())?;
-                    right_iter.next();
+///Holds Database and Access to Services
+pub struct ServiceController<
+    Key:
+        std::marker::Sync
+        + std::marker::Send
+        + std::clone::Clone
+        + Serialize
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+    LinkType: 'static + std::marker::Sync + std::marker::Send + std::clone::Clone + Serialize,
+> {
+    db: DataStructure<Key, DataType, LinkType>,
+    service: Vec<ServiceDB<Key, DataType, LinkType>>,
+}
+impl<
+        Key: std::marker::Sync
+            + std::marker::Send
+            + std::clone::Clone
+            + Serialize
+            + std::cmp::Ord
+            + DeserializeOwned
+            + std::fmt::Display,
+        DataType: 'static
+            + std::marker::Sync
+            + std::marker::Send
+            + std::clone::Clone
+            + Serialize
+            + DeserializeOwned,
+        LinkType: 'static
+            + std::marker::Sync
+            + std::marker::Send
+            + std::clone::Clone
+            + Serialize
+            + DeserializeOwned
+            + std::cmp::PartialEq,
+    > ServiceController<Key, DataType, LinkType>
+{
+    pub fn backed(
+        path: String,
+    ) -> Result<ServiceClient<Key, DataType, LinkType>, crate::errors::DBOperationError>
+    where Key: 'static {
+        let c: fn(String) -> ServiceController<Key, DataType, LinkType> =
+            |path| ServiceController {
+                db: backed_datastructure(&path).ok().unwrap(),
+                service: vec![],
+            };
+        Ok(Self::make_controller_thread(c, path))
+    }
+    pub fn empty() 
+    -> ServiceClient<Key, DataType, LinkType> 
+    where Key: 'static{
+        Self::make_controller_thread(
+            |()| ServiceController {
+                db: new_datastructure(),
+                service: vec![],
+            },
+            (),
+        )
+    }
+    fn from_db(database: DataStructure<Key,DataType,LinkType>)->ServiceClient<Key, DataType, LinkType>
+    where Key: 'static{
+        Self::make_controller_thread(|db|{
+            ServiceController {
+                db: db,
+                service: vec![],
+            }
+        }, database)
+    }
+    /// The main thread of the program
+    fn main_loop(&mut self) {
+        loop {
+            let mut quit = false;
+            let mut command_vec = vec![];
+            command_vec.reserve(self.service.len());
+            #[allow(unused_mut)]
+            for mut service in &mut self.service {
+                command_vec.push(service.get_command());
+            }
+            let mut i = 0;
+            let mut res_vec = vec![];
+            for command in command_vec {
+                if command.is_some() {
+                    let res = self.process_task(command.unwrap());
+                    let r = match res {
+                        CommandResult::Quit => true,
+                        _ => false,
+                    };
+                    if r == true {
+                        quit = true;
+                    }
+                    res_vec.push((i, res))
                 }
+                i += 1;
+            }
+            for (i, res) in res_vec {
+                self.service[i].send_command_result(res);
+            }
+            if quit {
+                break;
             }
         }
     }
-}
-pub fn new_datastructure<
-    K: std::cmp::PartialEq + std::clone::Clone + std::cmp::Ord + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
->() -> DataStructure<K, DataType, LinkLabel> {
-    return DataStructure {
-        tree: BTreeMap::new(),
-        file_backing: None,
-    };
-}
-pub fn from_string<
-    K: std::cmp::PartialEq + std::clone::Clone + std::cmp::Ord + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
->(
-    input_string: String,
-) -> Result<DataStructure<K, DataType, LinkLabel>, DBOperationError>
-where
-    K: DeserializeOwned,
-
-    DataType: DeserializeOwned,
-    LinkLabel: DeserializeOwned,
-{
-    let ds = serde_json::from_str(input_string.as_str())?;
-    return Ok(ds);
-}
-pub fn backed_datastructure<
-    'a,
-    K: std::cmp::PartialEq + std::clone::Clone + std::cmp::Ord + Serialize,
-    DataType: std::clone::Clone + Serialize,
-    LinkLabel: std::clone::Clone + Serialize,
->(
-    backing: &'a String,
-) -> Result<DataStructure<K, DataType, LinkLabel>, DBOperationError>
-where
-    K: DeserializeOwned,
-
-    DataType: DeserializeOwned,
-    LinkLabel: DeserializeOwned,
-{
-    let file_res = File::open(backing);
-
-    if file_res.is_ok() {
-        let file = file_res.ok().unwrap();
-        let len = file.metadata().unwrap().len();
-        let res = serde_json::from_reader(file);
-        if res.is_ok() {
-            return Ok(res.ok().unwrap());
+    fn process_task(
+        &mut self,
+        command: Command<Key, DataType, LinkType>,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match command {
+            Command::Quit => CommandResult::Quit,
+            Command::Insert(key, data) => self.insert(key, data),
+            Command::GetKeys(key) => self.get(key),
+            Command::GetAllData => self.get_data(),
+            Command::GetContains(key) => self.get_contains(key),
+            Command::InsertLink(key, children, link_type) => {
+                self.insert_link(key, children, link_type)
+            }
+            Command::GetLinkedData(key) => self.get_linked_data(key),
+            Command::OverwriteData(key, data) => self.overwrite_data(key, data),
+            Command::OverwriteLink(key, linked_keys, link_type) => {
+                self.overwrite_link(key, linked_keys, link_type)
+            }
+            Command::GetLinkedKeys(key) => self.get_linked_keys(key),
+            Command::GetAllKeys => self.get_all_keys(),
+            Command::IterLinkType(l) => self.iter_link_type(l),
+            Command::MakeBacked(s) => self.make_backed(s),
+            Command::GetLen => self.get_len(),
+            Command::RightJoin(f) => self.right_join(f),
+            Command::GetDB => self.get_db(),
+            Command::AppendLink(key, append) => self.append_link(key, append),
+        }
+    }
+    fn append_link(&mut self, key: Key, append: Key) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.append_links(&key, &append) {
+            Ok(_) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
+        }
+    }
+    fn get_db(&self) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::GetDB(self.db.clone())
+    }
+    fn right_join(
+        &mut self,
+        db: crate::datastructure::DataStructure<Key, DataType, LinkType>,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        let r = self.db.right_join(&db);
+        match r {
+            Ok(r) => {
+                self.db = r;
+                CommandResult::InsertOk
+            }
+            Err(e) => CommandResult::Error(e),
+        }
+    }
+    fn get_len(&self) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::GetLen(self.db.len())
+    }
+    fn make_backed(&mut self, backing: String) -> CommandResult<Key, DataType, LinkType> {
+        let r = self.db.make_backed(&backing);
+        match r {
+            Ok(_) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
+        }
+    }
+    fn iter_link_type(&mut self, link: LinkType) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::IterLinkType(
+            self.db
+                .iter_link_type(&link)
+                .map(|(k, v)| (k, v.clone()))
+                .collect::<Vec<(Key, Vec<Key>)>>()
+                .clone(),
+        )
+    }
+    fn get_all_keys(&mut self) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::GetAllKeys(self.db.get_keys())
+    }
+    fn get_linked_keys(&mut self, key: Key) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.get_links(&key) {
+            Ok(data) => CommandResult::GetLinkedKeys(data.clone()),
+            Err(e) => CommandResult::Error(e),
+        }
+    }
+    fn overwrite_link(
+        &mut self,
+        key: Key,
+        linked_keys: Vec<Key>,
+        link_type: LinkType,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.overwrite_link(&key, &linked_keys, link_type) {
+            Ok(_) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
+        }
+    }
+    fn overwrite_data(
+        &mut self,
+        key: Key,
+        data: DataType,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.set_data(&key, &data) {
+            Ok(_i) => CommandResult::InsertOk,
+            Err(e) => CommandResult::Error(e),
+        }
+    }
+    fn get_linked_data(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
+        let data = self.db.get_links(&key);
+        if data.is_ok() {
+            let d = data
+                .ok()
+                .unwrap()
+                .iter()
+                .map(|temp_key| {
+                    (
+                        temp_key.clone(),
+                        self.db.get(&temp_key).ok().unwrap().clone(),
+                    )
+                })
+                .collect();
+            CommandResult::GetLinkedData(d)
         } else {
-            if len < 20 {
-                let mut ds = DataStructure {
-                    tree: BTreeMap::new(),
-                    file_backing: Some(backing.clone()),
-                };
-                ds.write_back()?;
-                return Ok(ds);
-            }
-            return Err(DBOperationError::ParseError);
+            return CommandResult::Error(errors::DBOperationError::Other);
         }
-    } else {
-        let mut ds = DataStructure {
-            tree: BTreeMap::new(),
-            file_backing: Some(backing.clone()),
-        };
-        ds.write_back()?;
-        return Ok(ds);
+    }
+    fn insert_link(
+        &mut self,
+        key: Key,
+        children: Vec<Key>,
+        link_type: LinkType,
+    ) -> CommandResult<Key, DataType, LinkType> {
+        match self.db.insert_link(&key, &children, link_type) {
+            Ok(_) => CommandResult::InsertOk,
+            Err(data) => CommandResult::Error(data),
+        }
+    }
+    fn get_data(&self) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::ReturnAllData(
+            self.db
+                .iter_data()
+                .map(|(a, b)| (a.clone(), b.clone()))
+                .collect(),
+        )
+    }
+    fn get_contains(&self, key: Key) -> CommandResult<Key, DataType, LinkType> {
+        CommandResult::Contains(self.db.contains(&key))
+    }
+    fn make_controller_thread<Args: std::marker::Send>(
+        s: fn(Args) -> ServiceController<Key, DataType, LinkType>,
+        args: Args,
+
+    ) 
+   -> ServiceClient<Key, DataType, LinkType> 
+   where Key:'static
+   {
+        let (send, recieve) = channel();
+        let mut controller = s(args);
+        let db = controller.db;
+        #[allow(unused_must_use)]
+        std::thread::spawn(move || {
+            let mut controller = ServiceController{
+                db:db,
+                service: vec![]
+            };
+            send.send(controller.add_service());
+            controller.main_loop();
+        });
+        return recieve.recv().ok().unwrap();
+    }
+    pub fn add_service(&mut self) -> ServiceClient<Key, DataType, LinkType> {
+        let (db, client) = new_client();
+        self.service.push(db);
+        return client;
+    }
+    /// Inserts into database
+    fn insert(&mut self, key: Key, data: DataType) -> CommandResult<Key, DataType, LinkType> {
+        let res = self.db.insert(&key, data);
+        if res.is_ok() {
+            return CommandResult::InsertOk;
+        } else {
+            return CommandResult::Error(res.err().unwrap());
+        }
+    }
+    fn get(&mut self, key: Key) -> CommandResult<Key, DataType, LinkType> {
+        let res = self.db.get(&key);
+        if res.is_ok() {
+            return CommandResult::Get(res.ok().unwrap().clone());
+        } else {
+            return CommandResult::Error(res.err().unwrap());
+        }
     }
 }
-
-#[cfg(test)]
-mod tests {
+fn new_client<
+    Key: std::marker::Sync
+        + std::marker::Send
+        + std::cmp::PartialEq
+        + Serialize
+        + std::clone::Clone
+        + std::cmp::Ord
+        + std::fmt::Display,
+    DataType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
+    LinkType: std::marker::Sync + std::marker::Send + Serialize + std::clone::Clone,
+>() -> (
+    ServiceDB<Key, DataType, LinkType>,
+    ServiceClient<Key, DataType, LinkType>,
+) {
+    let (command_send, command_recieve) = channel();
+    let (result_send, result_recieve) = channel();
+    (
+        ServiceDB {
+            send_result: result_send,
+            recieve_commands: command_recieve,
+        },
+        ServiceClient {
+            send_commands: command_send,
+            recieve_result: result_recieve,
+        },
+    )
+}
+mod test {
+    #[allow(unused_imports)]
     use super::*;
-    type Label = u32;
-
     #[test]
-    #[allow(unused_must_use)]
-    fn test_insert() {
-        let mut arr: Vec<u32> = Vec::new();
-        arr.reserve(100000);
-        for _i in 1..100000 {
-            arr.push(_i);
-        }
-
-        let mut ds = new_datastructure::<u32, u32, Label>();
-        for i in &arr {
-            ds.insert(i, *i);
-        }
-        let mut test_arr: Vec<u32> = Vec::new();
-        for (_key, data) in ds.iter() {
-            test_arr.push(*data.item.b().unwrap());
-        }
-        arr.sort();
-        test_arr.sort();
-        for i in 0..test_arr.len() {
-            assert!(arr[i] == test_arr[i]);
-        }
+    fn service_smoke_test() {
+        let (_db, _c) = new_client::<u32, u32, u32>();
+    }
+    #[test]
+    fn service_send() {
+        use std::{thread, time};
+        let (mut db, mut c) = new_client::<u32, u32, u32>();
+        let t = std::thread::spawn(move || {
+            c.send_command(Command::GetKeys(0));
+        });
+        db.send_command_result(CommandResult::InsertOk);
+        thread::sleep(time::Duration::from_millis(10));
+        #[allow(unused_must_use)]
+        let _r = t.join();
+        assert_eq!(db.get_command().unwrap(), Command::GetKeys(0));
+    }
+    #[test]
+    fn quit_service_controller() {
+        let mut c = ServiceController::<u32, u32, u32>::empty();
+        use std::{thread, time};
+        thread::sleep(time::Duration::from_millis(10));
+        c.quit();
     }
     #[test]
     #[allow(unused_must_use)]
-    fn test_join_perf() {
-        let mut arr: Vec<u32> = Vec::new();
-        arr.reserve(100000);
-        for _i in 1..100000 {
-            arr.push(_i);
-        }
-
-        let mut ds = new_datastructure::<u32, u32, Label>();
-        for i in &arr {
-            ds.insert(i, *i);
-        }
-        let mut dsr = new_datastructure::<u32, u32, Label>();
-        for i in &arr {
-            dsr.insert(i, *i);
-        }
-        let dsj = right_join(&ds, &dsr).ok().unwrap();
-        arr.sort();
-        let mut test_arr: Vec<u32> = Vec::new();
-        for (_key, data) in dsj.iter() {
-            test_arr.push(*data.item.b().unwrap());
-        }
-    }
-    #[test]
-    fn write_back_join() {}
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_backed() {
-        let db_path = "test_backed.json";
-        {
-            std::fs::remove_file(db_path);
-            let mut ds = backed_datastructure::<u32, u32, Label>(&db_path.to_string())
-                .ok()
-                .unwrap();
-            ds.insert(&0, 0);
-        }
-        {
-            let ds = backed_datastructure::<u32, u32, Label>(&db_path.to_string())
-                .ok()
-                .unwrap();
-            let data = ds.get(&0).ok().unwrap();
-            assert!(data == &0);
-            std::fs::remove_file(db_path);
-        }
-    }
-    #[test]
-    #[allow(unused_must_use, unused_variables)]
-    fn test_make_backed() {
-        let db_path = "test_make_backed.json";
-        {
-            std::fs::remove_file(db_path);
-            let mut ds = new_datastructure::<u32, u32, Label>();
-            ds.insert(&0, 0);
-            ds.make_backed(&db_path.to_string());
-        }
-        assert!(std::path::Path::new(db_path).exists());
-        {
-            let ds = backed_datastructure::<u32, u32, Label>(&db_path.to_string())
-                .ok()
-                .unwrap();
-            let data = ds.get(&0).ok().unwrap();
-            assert!(data == &0);
-        }
-        assert!(std::path::Path::new(db_path).exists());
-        {
-            std::fs::remove_file(db_path);
-            let ds = backed_datastructure::<u32, u32, Label>(&db_path.to_string())
-                .ok()
-                .unwrap();
-            assert!(std::path::Path::new(db_path).exists());
-        }
+    fn insert_and_get() {
+        let mut c = ServiceController::<u32, u32, u32>::empty();
+        c.insert(0, 0);
+        let r = c.get(0);
+        assert_eq!(r.ok().unwrap(), 0);
+        c.insert(1, 1);
+        let r = c.get(1);
+        assert_eq!(r.ok().unwrap(), 1);
+        c.quit();
     }
     #[test]
     #[allow(unused_must_use)]
-    fn test_right_join() {
-        let mut dsr = new_datastructure::<u32, u32, Label>();
-        dsr.insert(&0, 0);
-        dsr.insert(&1, 1);
-        dsr.insert(&2, 2);
-        let mut dsl = new_datastructure::<u32, u32, Label>();
-        dsl.insert(&0, 0);
-        dsl.insert(&1, 1);
-        dsl.insert(&2, 2);
-        println!("inserted");
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
-        let join = right_join(&dsr, &dsl).ok().unwrap();
-        println!("join ds: {}", join);
-        assert!(join == dsl);
-
-        dsr.insert(&4, 3);
-        let join2 = right_join(&dsl, &dsr).ok().unwrap();
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
-
-        println!("join2 ds: {}", join);
-        assert!(join2 != dsl);
-        dsl.insert(&4, 3);
-        assert!(join2 == dsl);
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_eq() {
-        let mut dsr = new_datastructure::<u32, u32, Label>();
-        dsr.insert(&0, 0);
-        dsr.insert(&1, 1);
-        dsr.insert(&2, 2);
-        let mut dsl = new_datastructure::<u32, u32, Label>();
-        dsl.insert(&0, 0);
-        dsl.insert(&1, 1);
-        dsl.insert(&2, 2);
-        assert!(dsr == dsl);
-        dsl.insert(&3, 3);
-        assert!(dsr != dsl);
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn make_backed_with_file() {
-        std::fs::remove_file("testing_db.json");
+    fn backed() {
+        let db_path = "ds.json".to_string();
+        std::fs::remove_file(db_path.clone());
         {
-            let mut file = File::create("testing_db.json").ok().unwrap();
-            file.write_all(b"");
+            let mut ds = ServiceController::<u32, u32, u32>::empty();
+            ds.insert(1, 1);
+            ds.make_backed(db_path.clone());
+            ds.quit();
         }
-        let ds = backed_datastructure::<u32, u32, Label>(&"testing_db.json".to_string());
-        assert!(ds.is_ok() == true);
-    }
-    #[test]
-    #[allow(unused_must_use, unused_variables)]
-    fn test_backed_join() {
-        let mut dsr = new_datastructure::<u32, u32, Label>();
-        dsr.insert(&0, 0);
-        dsr.insert(&1, 1);
-        dsr.insert(&2, 2);
-        for i in 3..100 {
-            dsr.insert(&i, 5);
-        }
-
-        let mut dsl = backed_datastructure::<u32, u32, Label>(&"join.json".to_string())
+        let mut ds2 = ServiceController::<u32, u32, u32>::backed(db_path)
             .ok()
             .unwrap();
-        dsl.insert(&0, 0);
-        dsl.insert(&1, 1);
-        dsl.insert(&2, 2);
-
-        println!("inserted");
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
-        let join = right_join(&dsr, &dsl).ok().unwrap();
-
-        let join2 = right_join(&dsl, &dsr).ok().unwrap();
-        println!("join ds: {}", join);
-
-        dsr.insert(&4, 3);
-        println!("right ds: {}", dsr);
-        println!("left ds: {}", dsl);
-
-        println!("join2 ds: {}", join);
-        dsl.insert(&4, 3);
+        let r = ds2.get(1);
+        assert!(r.is_ok());
+        assert_eq!(ds2.get(1).ok().unwrap(), 1);
     }
     #[test]
     #[allow(unused_must_use)]
-    fn test_serialize() {
-        let mut dsr = new_datastructure::<u32, u32, Label>();
-        dsr.insert(&0, 0);
-        dsr.insert(&1, 1);
-        dsr.insert(&2, 2);
-        let str_ds = dsr.to_string();
-        let dsl: DataStructure<u32, u32, Label> = from_string(str_ds.ok().unwrap()).ok().unwrap();
-        assert!(dsr == dsl);
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_links() {
-        let mut dsr = new_datastructure::<u32, u32, Label>();
-        dsr.insert(&0, 0);
-        dsr.insert(&1, 1);
-        dsr.insert(&2, 2);
-        dsr.insert_link(&4, &vec![0, 1], 0);
-        let foo: std::vec::Vec<u32> = vec![0, 1];
-        assert!(*dsr.get_links(&4).ok().unwrap() == (foo));
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_iter_link() {
-        let mut ds = new_datastructure::<u32, u32, Label>();
-        ds.insert(&10, 5);
-        ds.insert_link(&9, &vec![10], 0);
-        let iter = ds.iter_links(&9).ok().unwrap();
-        for (_i, j) in iter {
-            assert!(*j == 5);
-        }
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_iter_data() {
-        let mut ds = new_datastructure::<u32, u32, Label>();
-        ds.insert(&10, 5);
-        for (_key, data) in ds.iter_data() {
-            assert!(*data == 5);
-        }
-        return ();
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_set_data() {
-        let mut ds = new_datastructure::<u32, u32, Label>();
-        ds.insert(&10, 5);
-        ds.set_data(&10, &10);
-        for (_key, data) in ds.iter_data() {
-            assert!(*data == 10);
-        }
-        return ();
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_link_type_iter() {
-        let mut ds = new_datastructure::<u32, u32, u32>();
-        ds.insert(&10, 5);
-        ds.insert_link(&9, &vec![10], 0);
-        for (key, linked_keys) in ds.iter_link_type(&0) {
-            assert!(key == 9);
-            assert!(linked_keys[0] == 10);
-        }
-    }
-    #[test]
-    #[allow(unused_must_use)]
-    fn print_datastructure() {
-        let mut arr: Vec<u32> = Vec::new();
-        arr.reserve(100000);
-        for _i in 1..100000 {
-            arr.push(_i);
-        }
-
-        let mut ds = new_datastructure::<u32, u32, Label>();
-        for i in &arr {
-            ds.insert(i, *i);
-        }
-        println!("{}", ds);
-    }
-    #[test]
-    fn test_to_string_error() {
-        let s: String = DBOperationError::KeyAllreadyPresent.into();
-    }
-    #[test]
-    fn print_errors() {
-        println!(
-            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
-            DBOperationError::KeyAllreadyPresent,
-            DBOperationError::KeyNotFound,
-            DBOperationError::NodeNotLink,
-            DBOperationError::NodeNotData,
-            DBOperationError::SerializeError,
-            DBOperationError::FSError,
-            DBOperationError::ParseError,
-            DBOperationError::FileNotFound,
-            DBOperationError::FilePermissionDenied,
-            DBOperationError::NetworkConnectionRefused,
-            DBOperationError::NetworkConnectionReset,
-            DBOperationError::NetworkNotConnected,
-            DBOperationError::NetworkAddressInUse,
-            DBOperationError::NetworkAddrNotAvailable,
-            DBOperationError::BrokenPipe,
-            DBOperationError::FileAlreadyExists,
-            DBOperationError::WouldBlock,
-            DBOperationError::InvalidInput,
-            DBOperationError::InvalidData,
-            DBOperationError::TimedOut,
-            DBOperationError::Interrupted,
-            DBOperationError::Other,
-            DBOperationError::UnexpectedEof,
-        )
+    fn join() {
+        type Label = u32;
+        let mut dsr = ServiceController::<u32, u32, Label>::empty();
+        dsr.insert(0, 0);
+        dsr.insert(1, 1);
+        dsr.insert(2, 2);
+        dsr.right_join(Box::new(|c| {
+            c.insert(0, 0);
+            c.insert(1, 1);
+            c.insert(2, 2);
+            Ok(())
+        }));
+        assert_eq!(dsr.get(0).ok().unwrap(), 0);
+        assert_eq!(dsr.get(1).ok().unwrap(), 1);
+        assert_eq!(dsr.get(2).ok().unwrap(), 2);
+        assert!(dsr.right_join(Box::new(|c| { c.insert(4, 4) })).is_ok());
+        assert_eq!(dsr.get(4).ok().unwrap(), 4);
+        assert!(dsr.get(1).is_err());
     }
 }

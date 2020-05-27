@@ -4,6 +4,7 @@ mod legacy_db;
 use gulkana;
 use std::fs;
 mod thumbnail;
+use gulkana::ServiceClient;
 #[derive(Clone, Serialize, Deserialize, Debug, std::cmp::PartialEq)]
 pub enum FileTypes {
     Video,
@@ -119,9 +120,8 @@ pub enum DirectoryTypes {
     Directory,
     Playlist(PlaylistMeta),
 }
-#[derive(Clone)]
 pub struct VideoDB {
-    database: gulkana::DataStructure<String, FileData, DirectoryTypes>,
+    database: ServiceClient<String, FileData, DirectoryTypes>,
     database_path: Option<String>,
     thumb_dir: String,
     thumb_res: u32,
@@ -135,12 +135,12 @@ pub struct HtmlPlaylist {
 impl VideoDB {
     fn make_thumbnails(&mut self) -> Result<String, String> {
         let mut keys = vec![];
-        for (key, _file) in self.database.iter_data() {
+        for (key, _file) in self.database.iter_data().unwrap() {
             keys.push(key.clone());
         }
         for key in keys {
             //make thumbnail
-            let file_res = self.database.get(&key);
+            let file_res = self.database.get(key.clone());
             if file_res.is_ok() {
                 let mut file = file_res.ok().unwrap().clone();
                 if file.file_type == FileTypes::Video {
@@ -157,7 +157,7 @@ impl VideoDB {
                             thumbnail_res: thumb.resolution,
                             video_data: file.metadata.video_data.clone(),
                         };
-                        let res = self.database.set_data(&key, &file);
+                        let res = self.database.set_data(key, file);
                         if res.is_err() {
                             return Err("failed to set data".to_string());
                         }
@@ -176,7 +176,7 @@ impl VideoDB {
     ) -> Result<String, String> {
         video_data.gen_file_type();
 
-        let res = self.database.set_data(&file_name, &video_data);
+        let res = self.database.set_data(file_name, video_data);
         if res.is_ok() {
             return Ok("".to_string());
         } else {
@@ -184,14 +184,17 @@ impl VideoDB {
         }
     }
     pub fn get_vid_html_vec(
-        &self,
+        &mut self,
         path_base: String,
         html_path_base: String,
         thumbnail_base: String,
     ) -> Vec<VideoHtml> {
         let mut vec_out: Vec<VideoHtml> = Vec::new();
-        debug!("database size when getting data: {}", self.database.len());
-        for (_key, file) in self.database.iter_data() {
+        debug!(
+            "database size when getting data: {}",
+            self.database.len().ok().unwrap()
+        );
+        for (_key, file) in self.database.iter_data().unwrap() {
             if file.can_show_file() {
                 let name = file.name.clone();
                 let mut file_url = path_base.clone();
@@ -219,12 +222,12 @@ impl VideoDB {
         return vec_out;
     }
     pub fn get_vid_html_from_path(
-        &self,
+        &mut self,
         path_base: String,
         thumbnail_base: String,
         vid_path: String,
     ) -> Result<VideoHtml, String> {
-        let res = self.database.get(&vid_path);
+        let res = self.database.get(vid_path);
         if res.is_ok() {
             let file = res.ok().unwrap();
             let mut thumbnail_name = thumbnail_base.clone();
@@ -253,7 +256,7 @@ impl VideoDB {
         path: String,
         to_change_to: VideoEditData,
     ) -> Result<String, String> {
-        let res = self.database.get(&path);
+        let res = self.database.get(path.clone());
         if res.is_ok() {
             let mut data = res.ok().unwrap().clone();
             data.name = to_change_to.name;
@@ -262,7 +265,7 @@ impl VideoDB {
                 star_rating: to_change_to.star_rating,
                 description: to_change_to.description,
             };
-            let res = self.database.set_data(&path, &data);
+            let res = self.database.set_data(path, data);
             if res.is_ok() {
                 return Ok("success".to_string());
             } else {
@@ -278,8 +281,8 @@ impl VideoDB {
         video_paths: Vec<String>,
     ) -> Result<String, String> {
         let res = self.database.overwrite_link(
-            &playlist_name,
-            &video_paths,
+            playlist_name,
+            video_paths,
             DirectoryTypes::Playlist(PlaylistMeta {}),
         );
         if res.is_ok() {
@@ -294,8 +297,8 @@ impl VideoDB {
         video_paths: Vec<String>,
     ) -> Result<String, String> {
         let res = self.database.overwrite_link(
-            &playlist_name,
-            &video_paths,
+            playlist_name,
+            video_paths,
             DirectoryTypes::Playlist(PlaylistMeta {}),
         );
         if res.is_ok() {
@@ -304,11 +307,13 @@ impl VideoDB {
             return Err("failed to make playlist".to_string());
         }
     }
-    pub fn get_playlist_all(&self, path_base: String, thumbnail_base: String) -> Vec<HtmlPlaylist> {
+    pub fn get_playlist_all(&mut self, path_base: String, thumbnail_base: String) -> Vec<HtmlPlaylist> {
         let mut playlist_list = vec![];
         for (link, linked_keys) in self
             .database
-            .iter_link_type(&DirectoryTypes::Playlist(PlaylistMeta {}))
+            .iter_link_type(DirectoryTypes::Playlist(PlaylistMeta {}))
+            .ok()
+            .unwrap()
         {
             let mut vid_vec = vec![];
             for key in linked_keys {
@@ -329,8 +334,8 @@ impl VideoDB {
         return playlist_list;
     }
     //gets the path of a video with a certain name
-    pub fn get_vid_path(&self, name: String) -> Result<String, String> {
-        for (_key, video) in self.database.iter_data() {
+    pub fn get_vid_path(&mut self, name: String) -> Result<String, String> {
+        for (_key, video) in self.database.iter_data().unwrap() {
             if video.name == name {
                 return Ok(video.file_path.clone());
             }
@@ -345,33 +350,29 @@ impl VideoDB {
         let db_path = self.database_path.clone();
         let play_before_join = self.get_playlist_all("foo".to_string(), "test".to_string());
         info!("checking database against file system");
-
         if source.is_some() && db_path.is_some() {
-            let db_res = db_from_dir(
+            let arg = (
                 source.unwrap(),
                 self.thumb_dir.clone(),
                 self.database_path.clone().unwrap(),
                 self.thumb_res,
             );
-            if db_res.is_ok() {
-                let db = db_res.ok().unwrap();
-                let join_res = self.database.right_join(&db.database);
+            let join_res = self.database.right_join::<(
+                std::string::String,
+                std::string::String,
+                std::string::String,
+                u32,
+            )>(
+                Box::new(|c, arg| Ok(db_from_dir(arg.0, arg.1, arg.2, arg.3, c))),
+                arg,
+            );
 
-                if join_res.is_ok() {
-                    let join = join_res.ok().unwrap();
-                    self.database = join;
-                    let res = self.database.make_backed(&db_path.unwrap());
-                    if res.is_err() {
-                        error!("Failed to write database to disk");
-                        return Err("Failed to write database to disk".to_string());
-                    }
+            if join_res.is_ok() {
+                let res = self.database.make_backed(db_path.unwrap());
+                if res.is_err() {
+                    error!("Failed to write database to disk");
+                    return Err("Failed to write database to disk".to_string());
                 }
-            } else {
-                error!(
-                    "failed to make database from directory: {}",
-                    db_res.clone().err().unwrap()
-                );
-                return Err(db_res.err().unwrap());
             }
         }
         for play in play_before_join {
@@ -392,7 +393,7 @@ pub fn new(
     num_recurse: u32,
 ) -> Result<VideoDB, String> {
     info!("creating backed datastructure");
-    let make_db_res = gulkana::backed_datastructure(&database_path);
+    let make_db_res = gulkana::ServiceController::backed(database_path.clone());
 
     if make_db_res.is_ok() {
         info!("made backed datastructure at path: {}", database_path);
@@ -462,7 +463,8 @@ fn db_from_dir(
     _thumb_dir: String,
     _database_path: String,
     _thumb_res: u32,
-) -> Result<VideoDB, String> {
+    service_db: &mut gulkana::ServiceClient<String, FileData, DirectoryTypes>,
+) {
     info!("making database from directory: {}", read_dir);
     let dir_iter_res = Path::new(&read_dir).read_dir();
     if dir_iter_res.is_ok() {
@@ -488,16 +490,11 @@ fn db_from_dir(
                     metadata: new_metadata(),
                 };
                 vid.gen_file_type();
-                db.add_video(file_path, vid)?;
+                service_db.set_data(file_path, vid);
             } else {
                 error!("file in directory invalid");
             }
         }
-
-        return Ok(db);
-    } else {
-        error!("path: {} not directory", read_dir);
-        return Err("path not directory".to_string());
     }
 }
 pub fn from_legacy(
@@ -526,7 +523,7 @@ pub fn from_legacy(
 }
 pub fn empty() -> VideoDB {
     return VideoDB {
-        database: gulkana::new_datastructure(),
+        database: gulkana::ServiceController::empty(),
         database_path: None,
         thumb_dir: "".to_string(),
         thumb_res: 0,
@@ -535,10 +532,10 @@ pub fn empty() -> VideoDB {
 }
 #[cfg(test)]
 mod test {
-    use std::fs::File;
     use super::*;
+    use std::fs::File;
     #[test]
-    fn build_database_empty(){
+    fn build_database_empty() {
         let db = empty();
     }
 }

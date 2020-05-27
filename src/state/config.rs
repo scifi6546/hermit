@@ -24,6 +24,21 @@ pub struct ConfigFile {
     pub version: u32, //version number of config file
     pub data: Config, //data for configuration
 }
+#[derive(PartialEq,Clone)]
+pub enum ConfigError{
+    ConfigNotConverted,
+    ParseError,
+    FileNotFound,
+}
+impl Into<std::string::String> for ConfigError{
+    fn into(self)->std::string::String{
+        match self{
+            ConfigError::ConfigNotConverted=>"Error in converting config file".to_string(),
+            ConfigError::ParseError=>"Error in parsing config file".to_string(),
+            ConfigError::FileNotFound=>"Config File not found".to_string()
+        }
+    }
+}
 pub fn empty() -> Config {
     return Config {
         users: [].to_vec(),
@@ -35,7 +50,7 @@ pub fn empty() -> Config {
         thumb_res: 0,
     };
 }
-fn get_config() -> std::result::Result<ConfigFile, String> {
+fn get_config() -> std::result::Result<ConfigFile, ConfigError> {
     println!("ran?");
 
     let file = File::open("config.json");
@@ -46,9 +61,9 @@ fn get_config() -> std::result::Result<ConfigFile, String> {
         if config.is_ok() && res.is_ok() {
             return Ok(config.unwrap());
         }
-        return Err("config file not parsed".to_string());
+        return Err(ConfigError::ParseError);
     }
-    return Err("config file not found".to_string());
+    return Err(ConfigError::FileNotFound);
 }
 fn print_config(input: Config) {
     println!("Users: ");
@@ -60,24 +75,20 @@ fn print_config(input: Config) {
     println!("  video_path: {}", input.videos.video_path);
     println!("  thumbnail_path: {}", input.videos.thumbnails);
 }
-pub fn load_config() -> Result<Config, String> {
-    let result = get_config();
-    if result.is_ok() {
-        let config_out = result.unwrap();
-        if config_out.version < CONFIG_VERSION {
-            let config = convert_config(config_out);
-            if config.is_ok() {
-                return Ok(config.unwrap().data);
-            } else {
-                return Err("config not converted properly".to_string());
-            }
+pub fn load_config() -> Result<Config, ConfigError> {
+    let config_out = get_config()?;
+    if config_out.version < CONFIG_VERSION {
+        let config = convert_config(config_out);
+        if config.is_ok() {
+            return Ok(config.unwrap().data);
+        } else {
+            return Err(ConfigError::ConfigNotConverted);
         }
-        print_config(config_out.clone().data);
-        info!("loaded config file successfully");
-
-        return Ok(config_out.data);
     }
-    return Err(result.err().unwrap());
+    print_config(config_out.clone().data);
+    info!("loaded config file successfully");
+    return Ok(config_out.data);
+    
 }
 pub fn convert_config(config_in: ConfigFile) -> Result<ConfigFile, String> {
     //there is only 1 version so no converting needed yet

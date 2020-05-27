@@ -1,7 +1,7 @@
 use argon2::{self, Config};
-use gulkana::DataStructure;
-use serde::Serialize;
-#[derive(Clone, Serialize)]
+use gulkana::{ServiceClient, ServiceController};
+use serde::{Deserialize, Serialize};
+#[derive(Clone, Serialize, Deserialize)]
 pub struct User {
     pub name: String,
     pub password: String,
@@ -9,15 +9,14 @@ pub struct User {
 }
 type Username = String;
 #[allow(dead_code)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, PartialEq, Deserialize)]
 pub enum UserCategories {
     Admin,
     RegularUser,
 }
-#[derive(Clone)]
 pub struct UserVec {
     //key is username
-    pub _users: DataStructure<Username, User, UserCategories>,
+    pub _users: ServiceClient<Username, User, UserCategories>,
     //_users:Vec<User>
 }
 #[derive(Clone)]
@@ -27,8 +26,8 @@ pub struct UserConf {
 }
 impl UserVec {
     pub fn add_user(&mut self, username: String, password: String) -> Result<String, String> {
-        for (username_temp, _user) in self._users.iter_data() {
-            if &username == username_temp {
+        for (username_temp, _user) in self._users.iter_data().unwrap() {
+            if username == username_temp {
                 return Err("user already exists".to_string());
             }
         }
@@ -41,7 +40,7 @@ impl UserVec {
             token: "".to_string(),
         };
 
-        let insert_res = self._users.insert(&username, user_temp);
+        let insert_res = self._users.insert(username, user_temp);
         if insert_res.is_ok() {
             return Ok("success".to_string());
         } else {
@@ -58,7 +57,7 @@ impl UserVec {
             password: hashed_password,
             token: "".to_string(),
         };
-        let insert_res = self._users.insert(&username, user_temp);
+        let insert_res = self._users.insert(username, user_temp);
         if insert_res.is_ok() {
             return Ok("success".to_string());
         } else {
@@ -66,15 +65,15 @@ impl UserVec {
         }
     }
     pub fn logout(&mut self, token: String) -> Result<String, String> {
-        let keys = self._users.get_keys();
+        let keys = self._users.get_keys().ok().unwrap();
         for username in keys {
-            let user_res = self._users.get(&username);
+            let user_res = self._users.get(username.clone());
             if user_res.is_ok() {
                 let user = user_res.ok().unwrap();
                 if user.token == token {
                     let mut mut_user = user.clone();
                     mut_user.token = "".to_string();
-                    let res = self._users.set_data(&username, &mut_user);
+                    let res = self._users.set_data(username, mut_user);
                     if res.is_ok() {
                         return Ok("success".to_string());
                     } else {
@@ -87,14 +86,14 @@ impl UserVec {
     }
     /// if  verification is sucessfull returns string with token if failed returns error message
     pub fn verify_user(&mut self, username_in: String, password: String) -> Result<String, String> {
-        let user_res = self._users.get(&username_in.clone());
+        let user_res = self._users.get(username_in.clone());
         if user_res.is_ok() {
             let mut user = user_res.ok().unwrap().clone();
 
             if argon2::verify_encoded(&user.password, &password.clone().into_bytes()).unwrap() {
                 let token = self.make_token();
                 user.token = token.clone();
-                let set_data = self._users.set_data(&username_in, &user);
+                let set_data = self._users.set_data(username_in, user);
                 if set_data.is_ok() {
                     return Ok(token);
                 } else {
@@ -107,7 +106,7 @@ impl UserVec {
         return Err("auth failed".to_string());
     }
     //generates a valid token
-    fn make_token(&self) -> String {
+    fn make_token(&mut self) -> String {
         let token_len = 20;
         let mut token: String = String::new();
         token.reserve(token_len);
@@ -115,7 +114,7 @@ impl UserVec {
             token.push(rand::random::<char>());
         }
         //making sure that token is not already used
-        for (_username, user) in self._users.iter_data() {
+        for (_username, user) in self._users.iter_data().unwrap() {
             if user.token == token {
                 //returning new random token
                 return self.make_token();
@@ -124,11 +123,11 @@ impl UserVec {
         return token;
     }
     //verifies a token and makes sure user is authorized
-    pub fn verify_token(&self, token: String) -> bool {
+    pub fn verify_token(&mut self, token: String) -> bool {
         if token == "" {
             return false;
         }
-        for (_username, user) in self._users.iter_data() {
+        for (_username, user) in self._users.iter_data().unwrap() {
             if user.token == token {
                 return true;
             }
@@ -136,8 +135,8 @@ impl UserVec {
         return false;
     }
     #[allow(dead_code)]
-    pub fn get_token(&self, username_in: String) -> Result<String, String> {
-        for (_username, user) in self._users.iter_data() {
+    pub fn get_token(&mut self, username_in: String) -> Result<String, String> {
+        for (_username, user) in self._users.iter_data().unwrap() {
             if username_in == user.name {
                 return Ok(user.token.clone());
             }
@@ -146,13 +145,13 @@ impl UserVec {
     }
     //checks if the structer is empty
     #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        self._users.len() == 0
+    pub fn is_empty(&mut self) -> bool {
+        self._users.len().ok().unwrap() == 0
     }
-    pub fn print_users(&self) -> String {
+    pub fn print_users(&mut self) -> String {
         let mut out: String = String::new();
         out.push_str("start users");
-        for (_username, user) in self._users.iter_data() {
+        for (_username, user) in self._users.iter_data().unwrap() {
             out.push_str("username: ");
             out.push_str(&user.name);
             out.push_str("  password: ");
@@ -162,9 +161,9 @@ impl UserVec {
         out.push_str("end users");
         return out;
     }
-    pub fn ret_conf_users(&self) -> Vec<UserConf> {
+    pub fn ret_conf_users(&mut self) -> Vec<UserConf> {
         let mut vec_out: Vec<UserConf> = Vec::new();
-        for (_username, user) in self._users.iter_data() {
+        for (_username, user) in self._users.iter_data().unwrap() {
             vec_out.push(UserConf {
                 username: user.name.clone(),
                 password: user.password.clone(),
@@ -172,13 +171,13 @@ impl UserVec {
         }
         return vec_out;
     }
-    pub fn iter(&self) -> gulkana::DataNodeIter<'_, std::string::String, User, UserCategories> {
-        return self._users.iter_data();
+    pub fn iter(&mut self) -> gulkana::DataIter<(std::string::String, User)> {
+        return self._users.iter_data().unwrap();
     }
 }
 pub fn new() -> UserVec {
     return UserVec {
-        _users: gulkana::new_datastructure(),
+        _users: gulkana::ServiceController::empty(),
     };
 }
 fn get_salt() -> [u8; 20] {

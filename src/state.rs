@@ -17,7 +17,6 @@ mod users;
 const DB_PATH: &str = "db.json";
 const VIDEO_WEB_PATH: &str = "/files/videos/";
 const THUMB_WEB_PATH: &str = "/files/thumbnails/";
-#[derive(Clone)]
 pub struct State {
     pub config_file: config::Config,
     pub video_db: videos::VideoDB,
@@ -44,7 +43,7 @@ impl State {
         }
         return Err("invalid credentials".to_string());
     }
-    pub fn is_auth(&self, token: String) -> bool {
+    pub fn is_auth(&mut self, token: String) -> bool {
         return self.users.verify_token(token);
     }
     pub fn logout(&mut self, token: String) -> Result<String, String> {
@@ -84,14 +83,14 @@ impl State {
         }
     }
 
-    pub fn get_thumb_res(&self, token: String) -> Result<u32, String> {
+    pub fn get_thumb_res(&mut self, token: String) -> Result<u32, String> {
         if self.is_auth(token) {
             return self.video_db.get_thumb_res();
         } else {
             return Err("not authorized".to_string());
         }
     }
-    pub fn get_videos(&self, user_token: String) -> Result<Vec<videos::VideoHtml>, String> {
+    pub fn get_videos(&mut self, user_token: String) -> Result<Vec<videos::VideoHtml>, String> {
         if self.is_auth(user_token) {
             return Ok(self.video_db.get_vid_html_vec(
                 VIDEO_WEB_PATH.to_string(),
@@ -103,7 +102,7 @@ impl State {
         }
     }
     pub fn get_vid_html_from_path(
-        &self,
+        &mut self,
         user_token: String,
         video_path: String,
     ) -> Result<videos::VideoHtml, String> {
@@ -140,7 +139,7 @@ impl State {
         return Err("not authorized".to_string());
     }
     pub fn get_playlist_all(
-        &self,
+        &mut self,
         user_token: String,
     ) -> Result<Vec<videos::HtmlPlaylist>, String> {
         if self.is_auth(user_token) {
@@ -151,7 +150,7 @@ impl State {
             return Err("not authorized".to_string());
         }
     }
-    pub fn get_vid_path(&self, user_token: String, video_name: String) -> Result<String, String> {
+    pub fn get_vid_path(&mut self, user_token: String, video_name: String) -> Result<String, String> {
         if self.is_auth(user_token) {
             let res = self.video_db.get_vid_path(video_name);
             if res.is_ok() {
@@ -231,13 +230,12 @@ impl State {
         if video_res.is_ok() {
             self.video_db = video_res.ok().unwrap()
         } else {
-            error!("{}", video_res.clone().err().unwrap());
-            return Err(video_res.err().unwrap());
+            return Err(video_res.err().unwrap().clone());
         }
         info!("reloaded server successfully");
         return Ok("done".to_string());
     }
-    pub fn get_users(&self, token: String) -> Result<Vec<UserOut>, String> {
+    pub fn get_users(&mut self, token: String) -> Result<Vec<UserOut>, String> {
         if self.is_auth(token) {
             let mut out: Vec<UserOut> = Vec::new();
             for (_username, user) in self.users.iter() {
@@ -250,7 +248,7 @@ impl State {
             return Err("not authorized".to_string());
         }
     }
-    pub fn print_users(&self) {
+    pub fn print_users(&mut self) {
         println!("Users: ");
         println!("{}", self.users.print_users());
     }
@@ -271,6 +269,41 @@ impl State {
             return Err("error in writing".to_string());
         }
     }
+    fn init_state(startup_options: StartupOptions) -> Result<State, String> {
+        let temp_cfg = config::load_config();
+        if temp_cfg.is_ok() {
+            let cfg = temp_cfg.ok().unwrap();
+            let vid_dir = cfg.videos.video_path.clone();
+            let video_res = videos::new(
+                vid_dir,
+                "thumbnails".to_string(),
+                DB_PATH.to_string(),
+                cfg.thumb_res,
+                0,
+            );
+            if video_res.is_ok() {
+                let mut out = State {
+                    config_file: cfg.clone(),
+                    video_db: video_res.ok().unwrap(),
+                    users: users::new(),
+                    setup_bool: true,
+                    use_ssl: startup_options.use_ssl,
+                };
+                for user in cfg.users.clone() {
+                    let res = out.users.load_user(user.username, user.passwd);
+                    if res.is_err() {
+                        return Err(res.err().unwrap());
+                    }
+                }
+                return Ok(out);
+            } else {
+                return Err(video_res.err().unwrap());
+            }
+        } else {
+            return Ok(empty_state(startup_options))
+        }
+    }
+
 } /*
   lazy_static!{
       pub static ref TERA: Tera = {
@@ -278,44 +311,12 @@ impl State {
           //tera
       };
   }*/
+#[derive(Clone)]
 //used to declare things that will be set in the cli args
-struct StartupOptions {
+pub struct StartupOptions {
     use_ssl: bool, //whether or not to redirect to https
 }
-fn init_state(startup_otions: StartupOptions) -> Result<State, String> {
-    let temp_cfg = config::load_config();
-    if temp_cfg.is_ok() {
-        let cfg = temp_cfg.ok().unwrap();
-        let vid_dir = cfg.videos.video_path.clone();
-        let video_res = videos::new(
-            vid_dir,
-            "thumbnails".to_string(),
-            DB_PATH.to_string(),
-            cfg.thumb_res,
-            0,
-        );
-        if video_res.is_ok() {
-            let mut out = State {
-                config_file: cfg.clone(),
-                video_db: video_res.ok().unwrap(),
-                users: users::new(),
-                setup_bool: true,
-                use_ssl: startup_otions.use_ssl,
-            };
-            for user in cfg.users.clone() {
-                let res = out.users.load_user(user.username, user.passwd);
-                if res.is_err() {
-                    return Err(res.err().unwrap());
-                }
-            }
-            return Ok(out);
-        } else {
-            return Err(video_res.err().unwrap());
-        }
-    } else {
-        return Err(temp_cfg.err().unwrap());
-    }
-}
+
 //returns an empty state
 fn empty_state(startup_otions: StartupOptions) -> State {
     return State {
@@ -346,14 +347,16 @@ fn make_ssl_key() {
         info!("made ssl cert");
     }
 }
-pub fn run_webserver(state_in: &mut State, use_ssl: bool, static_files: String) {
-    let thumb_dir = state_in.get_thumb_dir();
-    let temp_state = RwLock::new(state_in.clone());
-    let shared_state = web::Data::new(temp_state);
+pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,startup:StartupOptions,use_ssl:bool,static_files:String) {
     // load ssl keys
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
     let http_server = HttpServer::new(move || {
+        let res = state_fn(startup.clone());
+        if res.is_ok(){
+        let temp_state = RwLock::new(res.ok().unwrap());
+        let thumb_dir = (*temp_state.read().unwrap()).get_thumb_dir();
+        let shared_state = web::Data::new(temp_state);
         App::new()
             .wrap(
                 CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
@@ -364,7 +367,6 @@ pub fn run_webserver(state_in: &mut State, use_ssl: bool, static_files: String) 
             .route("/api/videos", web::get().to(get_videos))
             .route("/api/add_user", web::post().to(add_user))
             .route("/api/get_user", web::get().to(get_users))
-            .route("/", web::get().to(index))
             .route("/api/setup", web::post().to(api_setup))
             .route("/api/is_setup", web::get().to(api_is_setup))
             .route("/api/logout", web::post().to(logout_api))
@@ -378,12 +380,21 @@ pub fn run_webserver(state_in: &mut State, use_ssl: bool, static_files: String) 
             .route("/api/thumbnail_resolution", web::get().to(get_thumb_res))
             .route("/videos/{video_name}", web::get().to(video_files))
             .route("/files/videos/{video_name}", web::get().to(video_files))
-            .service(actix_files::Files::new("/static", static_files.as_str()))
+            .service(actix_files::Files::new("/index.html", static_files.as_str()))
+            .service(actix_files::Files::new("/", static_files.as_str()))
             .service(actix_files::Files::new("/thumbnails", thumb_dir.clone()))
             .service(actix_files::Files::new(
                 "/files/thumbnails",
                 thumb_dir.clone(),
             ))
+        }else{
+            error!("{}",res.err().unwrap());
+            App::new()
+            .wrap(
+                CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
+                    .secure(false),
+            )
+        }
     });
     if use_ssl {
         // load ssl keys
@@ -404,13 +415,12 @@ pub fn run_webserver(state_in: &mut State, use_ssl: bool, static_files: String) 
 }
 //starts the web server, if use_ssl is true than all requests will be sent through https
 pub fn init(use_ssl: bool,static_files:String) {
-    let state_res = init_state(StartupOptions { use_ssl: use_ssl });
-    if state_res.is_ok() {
-        run_webserver(&mut state_res.ok().unwrap(), use_ssl,static_files);
-    } else {
-        let mut state = empty_state(StartupOptions { use_ssl: use_ssl });
-        run_webserver(&mut state, use_ssl,static_files);
-    }
+    //let state_res = init_state(StartupOptions { use_ssl: use_ssl });
+    //if state_res.is_ok() {
+        run_webserver(State::init_state,StartupOptions { use_ssl: use_ssl }, use_ssl,static_files);
+    //} else {
+    //    run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
+    //}
 }
 #[derive(Deserialize)]
 struct UserReq {
@@ -487,7 +497,7 @@ pub fn get_video(
 ) -> Result<String> {
     let token_res = session.get("token");
     if token_res.is_ok() {
-        let state = data.read().unwrap();
+        let mut state = data.write().unwrap();
         let token = token_res.unwrap().unwrap();
         let video_res = state.get_vid_html_from_path(token, info.video_path.clone());
         if video_res.is_ok() {
@@ -504,7 +514,7 @@ pub fn get_video(
 pub fn get_users(data: web::Data<RwLock<State>>, session: Session) -> impl Responder {
     let token = session.get("token");
     if token.is_ok() {
-        let state = data.read().unwrap();
+        let mut state = data.write().unwrap();
 
         let out = state.get_users(token.unwrap().unwrap());
         if out.is_ok() {
@@ -529,7 +539,7 @@ fn get_videos(data: web::Data<RwLock<State>>, session: Session) -> impl Responde
     let token_res = session.get("token");
     if token_res.is_ok() {
         let token = token_res.unwrap().unwrap();
-        let state_data = data.read().unwrap();
+        let mut state_data = data.write().unwrap();
         let videos = state_data.get_videos(token);
         let out = serde_json::to_string(&videos).unwrap();
         return HttpResponse::Ok().body(out);
@@ -547,7 +557,7 @@ pub fn get_logged_in(data: web::Data<RwLock<State>>, session: Session) -> impl R
         let token_t = token_res.unwrap();
         if token_t.is_some() {
             let token = token_t.unwrap();
-            let state_data = data.read().unwrap();
+            let mut state_data = data.write().unwrap();
             let is_auth = state_data.is_auth(token);
             if is_auth {
                 let json = LoggedIn {
@@ -709,7 +719,7 @@ fn edit_playlist_api(
 }
 
 fn get_playlist_api(data: web::Data<RwLock<State>>, session: Session) -> Result<String> {
-    let state_data = data.write().unwrap();
+    let mut state_data = data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok() {
         let token = token_res.ok().unwrap().unwrap();
@@ -751,7 +761,7 @@ pub fn video_files(
     path: web::Path<(String,)>,
 ) -> impl Responder {
     let token_res = session.get("token");
-    let state_data = data.read().unwrap();
+    let mut state_data = data.write().unwrap();
     let vid_name: String = path.0.clone();
     println!("vid_name: {}", vid_name);
     if token_res.is_ok() {
@@ -782,7 +792,7 @@ struct ThumbRes {
     thumbnail_resolution: u32,
 }
 pub fn get_thumb_res(data: web::Data<RwLock<State>>, session: Session) -> Result<String> {
-    let state_data = data.write().unwrap();
+    let mut state_data = data.write().unwrap();
     let token_res = session.get("token");
     if token_res.is_ok() {
         let token = token_res.ok().unwrap().unwrap();
