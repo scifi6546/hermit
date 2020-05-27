@@ -1,4 +1,4 @@
-FROM rust:1.40-buster
+FROM rust:1.43-buster
 RUN apt update && apt install -y ffmpegthumbnailer npm
 WORKDIR /usr/src/hermit
 COPY . .
@@ -15,11 +15,13 @@ RUN cargo install --path .
 EXPOSE 8088
 EXPOSE 8443
 RUN useradd -ms /bin/bash app_user
-
-RUN cp -r /usr/src/hermit/static /home/app_user/static
 WORKDIR /home/app_user
+USER app_user
+RUN mkdir /home/app_user/data
+WORKDIR /home/app_user/data
+RUN cp -r /usr/src/hermit/static /home/app_user/static
 RUN mkdir thumbnails
 RUN ls -alh
 ENV SSL=""
 ENV RUST_LOG=info
-CMD hermit-rust $SSL
+CMD hermit-rust $SSL -static "/home/app_user/static/static/"

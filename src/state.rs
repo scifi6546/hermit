@@ -347,10 +347,7 @@ fn make_ssl_key() {
         info!("made ssl cert");
     }
 }
-pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,startup:StartupOptions,use_ssl:bool) {
-
-
-    
+pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,startup:StartupOptions,use_ssl:bool,static_files:String) {
     // load ssl keys
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
@@ -370,7 +367,6 @@ pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,start
             .route("/api/videos", web::get().to(get_videos))
             .route("/api/add_user", web::post().to(add_user))
             .route("/api/get_user", web::get().to(get_users))
-            .route("/", web::get().to(index))
             .route("/api/setup", web::post().to(api_setup))
             .route("/api/is_setup", web::get().to(api_is_setup))
             .route("/api/logout", web::post().to(logout_api))
@@ -384,7 +380,8 @@ pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,start
             .route("/api/thumbnail_resolution", web::get().to(get_thumb_res))
             .route("/videos/{video_name}", web::get().to(video_files))
             .route("/files/videos/{video_name}", web::get().to(video_files))
-            .service(actix_files::Files::new("/static", "./static/static/"))
+            .service(actix_files::Files::new("/index.html", static_files.as_str()))
+            .service(actix_files::Files::new("/", static_files.as_str()))
             .service(actix_files::Files::new("/thumbnails", thumb_dir.clone()))
             .service(actix_files::Files::new(
                 "/files/thumbnails",
@@ -417,10 +414,10 @@ pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,start
     }
 }
 //starts the web server, if use_ssl is true than all requests will be sent through https
-pub fn init(use_ssl: bool) {
+pub fn init(use_ssl: bool,static_files:String) {
     //let state_res = init_state(StartupOptions { use_ssl: use_ssl });
     //if state_res.is_ok() {
-        run_webserver(State::init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
+        run_webserver(State::init_state,StartupOptions { use_ssl: use_ssl }, use_ssl,static_files);
     //} else {
     //    run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
     //}
@@ -593,7 +590,7 @@ struct Index {
 //todo redirect to https. I need to figure out how to do that
 //Current Ideas: detect if user is on http, if on http redirect to https
 pub fn index(_req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = PathBuf::from("static/index.html");
+    let path: PathBuf = PathBuf::from("../static/index.html");
     Ok(NamedFile::open(path)?)
 }
 #[derive(Serialize, Deserialize)]
