@@ -269,6 +269,41 @@ impl State {
             return Err("error in writing".to_string());
         }
     }
+    fn init_state(startup_options: StartupOptions) -> Result<State, String> {
+        let temp_cfg = config::load_config();
+        if temp_cfg.is_ok() {
+            let cfg = temp_cfg.ok().unwrap();
+            let vid_dir = cfg.videos.video_path.clone();
+            let video_res = videos::new(
+                vid_dir,
+                "thumbnails".to_string(),
+                DB_PATH.to_string(),
+                cfg.thumb_res,
+                0,
+            );
+            if video_res.is_ok() {
+                let mut out = State {
+                    config_file: cfg.clone(),
+                    video_db: video_res.ok().unwrap(),
+                    users: users::new(),
+                    setup_bool: true,
+                    use_ssl: startup_options.use_ssl,
+                };
+                for user in cfg.users.clone() {
+                    let res = out.users.load_user(user.username, user.passwd);
+                    if res.is_err() {
+                        return Err(res.err().unwrap());
+                    }
+                }
+                return Ok(out);
+            } else {
+                return Err(video_res.err().unwrap());
+            }
+        } else {
+            return Ok(empty_state(startup_options))
+        }
+    }
+
 } /*
   lazy_static!{
       pub static ref TERA: Tera = {
@@ -281,40 +316,7 @@ impl State {
 pub struct StartupOptions {
     use_ssl: bool, //whether or not to redirect to https
 }
-fn init_state(startup_otions: StartupOptions) -> Result<State, String> {
-    let temp_cfg = config::load_config();
-    if temp_cfg.is_ok() {
-        let cfg = temp_cfg.ok().unwrap();
-        let vid_dir = cfg.videos.video_path.clone();
-        let video_res = videos::new(
-            vid_dir,
-            "thumbnails".to_string(),
-            DB_PATH.to_string(),
-            cfg.thumb_res,
-            0,
-        );
-        if video_res.is_ok() {
-            let mut out = State {
-                config_file: cfg.clone(),
-                video_db: video_res.ok().unwrap(),
-                users: users::new(),
-                setup_bool: true,
-                use_ssl: startup_otions.use_ssl,
-            };
-            for user in cfg.users.clone() {
-                let res = out.users.load_user(user.username, user.passwd);
-                if res.is_err() {
-                    return Err(res.err().unwrap());
-                }
-            }
-            return Ok(out);
-        } else {
-            return Err(video_res.err().unwrap());
-        }
-    } else {
-        return Err(temp_cfg.err().unwrap());
-    }
-}
+
 //returns an empty state
 fn empty_state(startup_otions: StartupOptions) -> State {
     return State {
@@ -353,7 +355,9 @@ pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,start
     std::env::set_var("RUST_LOG", "my_errors=debug,actix_web=info");
     std::env::set_var("RUST_BACKTRACE", "1");
     let http_server = HttpServer::new(move || {
-        let temp_state = RwLock::new(state_fn(startup.clone()).ok().unwrap());
+        let res = state_fn(startup.clone());
+        if res.is_ok(){
+        let temp_state = RwLock::new(res.ok().unwrap());
         let thumb_dir = (*temp_state.read().unwrap()).get_thumb_dir();
         let shared_state = web::Data::new(temp_state);
         App::new()
@@ -386,6 +390,14 @@ pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,start
                 "/files/thumbnails",
                 thumb_dir.clone(),
             ))
+        }else{
+            error!("{}",res.err().unwrap());
+            App::new()
+            .wrap(
+                CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
+                    .secure(false),
+            )
+        }
     });
     if use_ssl {
         // load ssl keys
@@ -406,12 +418,12 @@ pub fn run_webserver(state_fn: fn(StartupOptions) -> Result<State, String>,start
 }
 //starts the web server, if use_ssl is true than all requests will be sent through https
 pub fn init(use_ssl: bool) {
-    let state_res = init_state(StartupOptions { use_ssl: use_ssl });
-    if state_res.is_ok() {
-        run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
-    } else {
-        run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
-    }
+    //let state_res = init_state(StartupOptions { use_ssl: use_ssl });
+    //if state_res.is_ok() {
+        run_webserver(State::init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
+    //} else {
+    //    run_webserver(init_state,StartupOptions { use_ssl: use_ssl }, use_ssl);
+    //}
 }
 #[derive(Deserialize)]
 struct UserReq {
